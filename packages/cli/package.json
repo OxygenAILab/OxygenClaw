@@ -1,0 +1,30 @@
+{
+  "name": "@oxygen-claw/cli",
+  "version": "26.0.0-alpha.1",
+  "description": "OxygenClaw CLI - Command line interface with MCP support",
+  "main": "dist/index.js",
+  "bin": {
+    "oxygen-claw": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@oxygen-claw/core": "26.0.0-alpha.1",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.0",
+    "inquirer": "^9.2.0",
+    "boxen": "^7.1.0",
+    "gradient-string": "^2.0.2",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/inquirer": "^9.0.0",
+    "@types/fs-extra": "^11.0.0",
+    "typescript": "^5.3.0"
+  }
+}

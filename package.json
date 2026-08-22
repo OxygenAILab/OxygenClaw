@@ -1,0 +1,31 @@
+{
+  "name": "oxygen-claw",
+  "version": "26.0.0-alpha.1",
+  "description": "OxygenClaw - Next-gen AI Agent Platform integrating TinyClaw, EdgeClaw, NanoClaw, StepClaw, OpenHands & UI-TARS",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspace=@oxygen-claw/webui",
+    "server": "npm run dev --workspace=@oxygen-claw/server",
+    "cli": "npm run dev --workspace=@oxygen-claw/cli",
+    "gateway": "npm run dev --workspace=@oxygen-claw/gateway",
+    "test": "npm run test --workspaces --if-present",
+    "start": "npm run server"
+  },
+  "keywords": [
+    "ai-agent",
+    "mcp",
+    "computer-use",
+    "openclaw",
+    "gui-automation",
+    "llm-gateway"
+  ],
+  "author": "OxygenClaw Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^43.2.0"
+  }
+}

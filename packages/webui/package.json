@@ -1,0 +1,35 @@
+{
+  "name": "@oxygen-claw/webui",
+  "version": "26.0.0-alpha.1",
+  "description": "OxygenClaw WebUI - Material 3 Dashboard with NewAPI integration",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.3",
+    "axios": "^1.18.1",
+    "lucide-react": "^0.294.0",
+    "mermaid": "^11.16.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.12.1",
+    "react-router-dom": "^6.20.0",
+    "recharts": "^3.9.2",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}

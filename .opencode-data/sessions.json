@@ -1,0 +1,33 @@
+[
+  {
+    "id": "ses_ff9333185ffefNsVVdge7vBgK9",
+    "project_id": "global",
+    "workspace_id": null,
+    "parent_id": null,
+    "slug": "jolly-island",
+    "directory": "C:/Users/Sails/Documents/Workspace/01-Active/Core-Systems/oxygen-claw",
+    "path": "Users/Sails/Documents/Workspace/01-Active/Core-Systems/oxygen-claw",
+    "title": "项目接手准备：会话记录分析",
+    "version": "1.18.18",
+    "share_url": null,
+    "summary_additions": 0,
+    "summary_deletions": 0,
+    "summary_files": 0,
+    "summary_diffs": null,
+    "metadata": null,
+    "cost": 0,
+    "tokens_input": 622086,
+    "tokens_output": 3556,
+    "tokens_reasoning": 0,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "revert": null,
+    "permission": null,
+    "agent": "build",
+    "model": "{\"id\":\"glm-5.2\",\"providerID\":\"sails_api\",\"variant\":\"default\"}",
+    "time_created": 1786820480634,
+    "time_updated": 1786820745511,
+    "time_compacting": null,
+    "time_archived": null
+  }
+]

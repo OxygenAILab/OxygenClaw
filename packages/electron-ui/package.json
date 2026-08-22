@@ -1,0 +1,52 @@
+{
+  "name": "oxygenclaw-electron",
+  "version": "26.0.0-alpha.1",
+  "description": "OxygenClaw Electron UI - Computer Use AI Agent Platform",
+  "main": "./out/main/index.js",
+  "author": "OxygenClaw Team",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "package": "electron-builder"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^3.0.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@tanstack/react-query": "^5.62.9",
+    "axios": "^1.7.9",
+    "better-sqlite3": "^13.0.1",
+    "drizzle-orm": "^0.36.4",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config-prettier": "^2.0.0",
+    "@electron-toolkit/eslint-config-ts": "^2.0.0",
+    "@electron-toolkit/tsconfig": "^1.0.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "drizzle-kit": "^0.28.1",
+    "electron": "^43.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "prettier": "^3.4.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.1",
+    "typescript": "^5.8.0",
+    "vite": "^5.4.11"
+  }
+}

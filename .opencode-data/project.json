@@ -1,0 +1,16 @@
+[
+  {
+    "id": "global",
+    "worktree": "C:/Users/Sails/Documents/Workspace/03-Competitions/Yau-26",
+    "vcs": "git",
+    "name": null,
+    "icon_url": null,
+    "icon_url_override": null,
+    "icon_color": null,
+    "time_created": 1785607207029,
+    "time_updated": 1786983563562,
+    "time_initialized": null,
+    "sandboxes": "[]",
+    "commands": null
+  }
+]
