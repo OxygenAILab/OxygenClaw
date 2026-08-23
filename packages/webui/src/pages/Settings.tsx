@@ -777,7 +777,7 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="flex-1 bg-background overflow-y-auto">
-        <div className="max-w-3xl mx-auto py-10 px-10">
+        <div key={activeTab} className="max-w-3xl mx-auto py-10 px-10 animate-fade-in">
           {activeTab === 'account' && (
             <div>
               <h2 className="text-2xl font-semibold text-on-surface mb-6">我的账户</h2>

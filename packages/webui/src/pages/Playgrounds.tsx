@@ -2298,7 +2298,7 @@ const Playgrounds: React.FC = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
           {!activeConv || activeConv.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-8 pb-16">
+            <div key={interactionMode} className="h-full flex flex-col items-center justify-center px-8 pb-16 animate-fade-in">
               <div className="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center mb-5 animate-scale-in">
                 <Sparkles size={26} className="text-on-primary-container" />
               </div>

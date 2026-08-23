@@ -149,6 +149,14 @@
   --glass-card-bg: var(--md-surface);
   --glass-modal-bg: var(--md-surface);
   --glass-header-bg: rgba(20, 20, 20, 0.85);
+
+  /* MD3 surface container tiers (apple dark) — must live INSIDE this block;
+     previously defined after the closing brace and silently dropped by CSS */
+  --md-surface-container-lowest: #0f0f10;
+  --md-surface-container-low: #161617;
+  --md-surface-container: #1c1c1e;
+  --md-surface-container-high: #232325;
+  --md-surface-container-highest: #2a2a2d;
 }
 
 /* ============================================================
@@ -197,10 +205,10 @@
   --md-inverse-on-surface: #f5eff7;
   --md-inverse-primary: #d0bcff;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f7f7f8;
-  --md-surface-container: #f4f4f5;
-  --md-surface-container-high: #eeeeef;
-  --md-surface-container-highest: #e8e8ea;
+  --md-surface-container-low: #f7f2fa;
+  --md-surface-container: #f3edf7;
+  --md-surface-container-high: #ece6f0;
+  --md-surface-container-highest: #e6e0e9;
 
   --md-elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
   --md-elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
@@ -257,11 +265,11 @@
   --md-inverse-surface: #e6e0e9;
   --md-inverse-on-surface: #322f35;
   --md-inverse-primary: #6750a4;
-  --md-surface-container-lowest: #0f0f10;
-  --md-surface-container-low: #161617;
-  --md-surface-container: #1c1c1e;
-  --md-surface-container-high: #232325;
-  --md-surface-container-highest: #2a2a2d;
+  --md-surface-container-lowest: #0f0d13;
+  --md-surface-container-low: #1d1b20;
+  --md-surface-container: #211f26;
+  --md-surface-container-high: #2b2930;
+  --md-surface-container-highest: #36343b;
 }
 
 * {
@@ -330,14 +338,14 @@ body {
   background: var(--md-outline);
 }
 
-/* Animations - smooth and refined */
+/* Animations - smooth and refined (unified ease-out-expo curve) */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: fadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeOut {
@@ -346,16 +354,16 @@ body {
 }
 
 .animate-fade-out {
-  animation: fadeOut 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: fadeOut 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .animate-slide-down {
-  animation: slideDown 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: slideDown 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideUp {
@@ -364,7 +372,7 @@ body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: slideUp 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes scaleIn {
@@ -373,7 +381,7 @@ body {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes shrink {
