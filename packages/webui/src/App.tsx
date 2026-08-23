@@ -10,7 +10,6 @@ import Settings from './pages/Settings';
 import MCP from './pages/MCP';
 import Dashboard from './pages/Dashboard';
 import Marketplace from './pages/Marketplace';
-import WorkbenchPage from './pages/WorkbenchPage';
 import { TaskDetailPage } from './pages/TaskDetailPage';
 import WelcomeScreen from './components/WelcomeScreen';
 import { ToastProvider } from './components/Toast';
@@ -67,7 +66,7 @@ const App: React.FC = () => {
                 <Route path="/" element={<SimpleLayout />}>
                   <Route index element={<RootRedirect />} />
                   <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="workbench" element={<WorkbenchPage />} />
+                  <Route path="workbench" element={<Navigate to="/playgrounds" replace />} />
                   <Route path="tasks" element={<TaskDetailPage />} />
                   <Route path="tasks/:taskId" element={<TaskDetailPage />} />
                   <Route path="playgrounds" element={<Playgrounds />} />
