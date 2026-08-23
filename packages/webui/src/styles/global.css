@@ -44,6 +44,13 @@
   --md-on-surface: #0a0a0a;
   --md-surface-variant: #f4f4f5;
   --md-on-surface-variant: #71717a;
+
+  /* MD3 surface container tiers (light) — was missing entirely, caused transparent dialogs/cards */
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f7f7f8;
+  --md-surface-container: #f4f4f5;
+  --md-surface-container-high: #eeeeef;
+  --md-surface-container-highest: #e8e8ea;
   --md-outline: #d4d4d8;
   --md-outline-variant: #ececee;
   --md-shadow: rgba(0, 0, 0, 0.06);
@@ -190,10 +197,10 @@
   --md-inverse-on-surface: #f5eff7;
   --md-inverse-primary: #d0bcff;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f7f2fa;
-  --md-surface-container: #f3edf7;
-  --md-surface-container-high: #ece6f0;
-  --md-surface-container-highest: #e6e0e9;
+  --md-surface-container-low: #f7f7f8;
+  --md-surface-container: #f4f4f5;
+  --md-surface-container-high: #eeeeef;
+  --md-surface-container-highest: #e8e8ea;
 
   --md-elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
   --md-elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
@@ -250,11 +257,11 @@
   --md-inverse-surface: #e6e0e9;
   --md-inverse-on-surface: #322f35;
   --md-inverse-primary: #6750a4;
-  --md-surface-container-lowest: #0f0d13;
-  --md-surface-container-low: #1d1b20;
-  --md-surface-container: #211f26;
-  --md-surface-container-high: #2b2930;
-  --md-surface-container-highest: #36343b;
+  --md-surface-container-lowest: #0f0f10;
+  --md-surface-container-low: #161617;
+  --md-surface-container: #1c1c1e;
+  --md-surface-container-high: #232325;
+  --md-surface-container-highest: #2a2a2d;
 }
 
 * {

@@ -2298,22 +2298,104 @@ const Playgrounds: React.FC = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
           {!activeConv || activeConv.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-8">
-              <div className="w-16 h-16 rounded-2xl bg-primary-container flex items-center justify-center mb-4">
-                <Sparkles size={28} className="text-on-primary-container" />
+            <div className="h-full flex flex-col items-center justify-center px-8 pb-16">
+              <div className="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center mb-5 animate-scale-in">
+                <Sparkles size={26} className="text-on-primary-container" />
               </div>
-              <h2 className="text-xl font-semibold text-on-surface mb-2">
-                {interactionMode === 'chat' ? '开始对话' : interactionMode === 'task' ? '创建任务' : 'Computer Use'}
+              <h2 className="text-2xl font-semibold text-on-surface mb-2 animate-fade-in">
+                {interactionMode === 'chat' ? '你好，我是 OxygenClaw' : interactionMode === 'task' ? '今天有什么工作要处理？' : '今天想让电脑做什么？'}
               </h2>
-              <p className="text-sm text-on-surface-variant text-center max-w-md mb-6">
+              <p className="text-sm text-on-surface-variant text-center max-w-md mb-8 animate-fade-in">
                 {interactionMode === 'chat'
                   ? '选择一个模型，然后开始与 AI 对话。支持文件和图片上传。'
                   : interactionMode === 'task'
                   ? '描述你的目标，OxygenClaw 会自动规划并完成任务。'
                   : '描述你想要在电脑上执行的操作，AI 会自动操控鼠标和键盘完成任务。'}
               </p>
+
+              {!imageGenMode && (
+                <>
+                  <div className="w-full max-w-2xl animate-slide-up">
+                    <div className="bg-surface-variant rounded-2xl border border-outline-variant focus-within:border-primary transition-colors shadow-md">
+                      <textarea
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        autoFocus
+                        rows={3}
+                        placeholder={interactionMode === 'chat' ? '输入消息...' : interactionMode === 'task' ? '描述你的任务目标...' : '描述你想要在电脑上执行的操作...'}
+                        className="w-full px-4 py-3.5 bg-transparent resize-none outline-none text-sm text-on-surface placeholder-on-surface-variant border-none !border-0"
+                      />
+                      <div className="flex items-center justify-between px-3 pb-3">
+                        <div className="flex items-center gap-0.5">
+                          {capabilityModes.map(m => {
+                            const Icon = m.icon;
+                            const activeCap = capability === m.id;
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => setCapability(m.id)}
+                                title={m.desc}
+                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                  activeCap
+                                    ? 'bg-primary-container text-on-primary-container font-medium'
+                                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface/60'
+                                }`}
+                              >
+                                <Icon size={13} />
+                                {m.label}
+                              </button>
+                            );
+                          })}
+                          <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface/50 transition-colors"
+                            title="上传文件"
+                          >
+                            <Paperclip size={17} />
+                          </button>
+                          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" multiple onChange={handleImageUpload} />
+                          <button
+                            onClick={() => imageInputRef.current?.click()}
+                            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface/50 transition-colors"
+                            title="上传图片"
+                          >
+                            <ImageUploadIcon size={17} />
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleSend}
+                          disabled={!input.trim() || isLoading}
+                          className="p-2.5 bg-primary text-on-primary rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-2 mt-4">
+                      {(interactionMode === 'chat'
+                        ? ['帮我写一封周报', '总结这段文字', '头脑风暴产品名']
+                        : interactionMode === 'task'
+                        ? ['调研 AI Agent 市场', '写一份项目计划', '分析这份数据']
+                        : ['打开记事本并输入 Hello', '整理下载文件夹', '查看系统盘剩余空间']
+                      ).map(s => (
+                        <button
+                          key={s}
+                          onClick={() => setInput(s)}
+                          className="px-3 py-1.5 rounded-full border border-outline-variant text-xs text-on-surface-variant hover:text-on-surface hover:border-outline hover:bg-surface-variant/60 transition-all"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
               {models.length === 0 && !modelsLoading && (
-                <div className="p-4 bg-error-container/30 rounded-xl max-w-md">
+                <div className="mt-8 p-4 bg-error-container/30 rounded-xl max-w-md animate-fade-in">
                   <div className="text-sm font-medium text-error flex items-center gap-2 mb-1">
                     <AlertCircle size={16} />
                     未检测到可用模型
@@ -2668,6 +2750,7 @@ const Playgrounds: React.FC = () => {
         </div>
 
         {/* Input area */}
+        {((activeConv && activeConv.messages.length > 0) || imageGenMode) && (
         <div className="border-t border-outline-variant p-4 bg-surface">
           <div className="max-w-3xl mx-auto">
             {imageGenMode && showImageGenParams && (
@@ -2836,6 +2919,7 @@ const Playgrounds: React.FC = () => {
             </p>
           </div>
         </div>
+        )}
         </div>
 
         {/* Canvas sidebar */}

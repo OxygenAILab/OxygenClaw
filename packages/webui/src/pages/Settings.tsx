@@ -749,7 +749,7 @@ const Settings: React.FC = () => {
   const currentUser = useLocalMode ? localUser : user;
 
   return (
-    <div className="flex h-full -m-6 overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       <div className="w-56 bg-surface-variant border-r border-outline-variant flex flex-col flex-shrink-0">
         <div className="px-5 py-4 border-b border-outline-variant">
           <h1 className="text-lg font-semibold text-on-surface">设置</h1>
@@ -777,7 +777,7 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="flex-1 bg-background overflow-y-auto">
-        <div className="max-w-2xl mx-auto py-8 px-8">
+        <div className="max-w-3xl mx-auto py-10 px-10">
           {activeTab === 'account' && (
             <div>
               <h2 className="text-2xl font-semibold text-on-surface mb-6">我的账户</h2>

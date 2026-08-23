@@ -30,6 +30,14 @@ export default {
         surface: {
           DEFAULT: 'var(--md-surface)',
           variant: 'var(--md-surface-variant)',
+          // MD3 surface container tiers — fixes transparent bg on Dialog/Card/Dropdown etc.
+          container: {
+            DEFAULT: 'var(--md-surface-container)',
+            low: 'var(--md-surface-container-low)',
+            lowest: 'var(--md-surface-container-lowest)',
+            high: 'var(--md-surface-container-high)',
+            highest: 'var(--md-surface-container-highest)',
+          },
         },
         background: 'var(--md-background)',
         error: 'var(--md-error)',
