@@ -64,6 +64,35 @@ const Models: React.FC = () => {
   const [activeImportIndex, setActiveImportIndex] = useState(0);
   const [newModelName, setNewModelName] = useState('');
 
+  // 快速预设：点击后填充 url / TokenName / 常用模型并切到手动配置
+  const DEPLOY_PRESETS: { name: string; url: string; models: string[] }[] = [
+    { name: 'OpenAI', url: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini'] },
+    { name: 'Anthropic', url: 'https://api.anthropic.com/v1', models: ['claude-sonnet-4-5'] },
+    { name: 'Gemini', url: 'https://generativelanguage.googleapis.com/v1beta', models: ['gemini-2.0-flash'] },
+    { name: 'NewAPI', url: '', models: [] },
+    { name: '硅基流动', url: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V3'] },
+    { name: '火山方舟', url: 'https://ark.cn-beijing.volces.com/api/v3', models: [] },
+    { name: '阿里百炼', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-max', 'qwen-plus'] },
+    { name: '无问芯穹', url: '', models: [] },
+    { name: 'OpenCode Zen', url: '', models: [] },
+  ];
+
+  const applyDeployPreset = (preset: typeof DEPLOY_PRESETS[number]) => {
+    setFormConfig(prev => ({
+      ...prev,
+      TokenName: preset.name,
+      ConnectInfo: { ...prev.ConnectInfo, url: preset.url },
+      Models: [...preset.models],
+    }));
+    setNewModelName('');
+    setDeployMode('form');
+    showToast({
+      type: 'success',
+      title: `已应用 ${preset.name} 预设`,
+      description: preset.url ? '填写 API Key 后即可部署' : '该平台需手动填写 API 地址',
+    });
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const models = getEnabledModels(providers);
@@ -1125,6 +1154,20 @@ const Models: React.FC = () => {
             <Plus size={14} />
             手动配置
           </button>
+        </div>
+
+        {/* 快速预设 */}
+        <div className="flex flex-wrap items-center gap-1.5 pb-3">
+          <span className="text-xs text-on-surface-variant mr-1">快速预设：</span>
+          {DEPLOY_PRESETS.map(p => (
+            <button
+              key={p.name}
+              onClick={() => applyDeployPreset(p)}
+              className="px-2.5 py-1 rounded-full border border-outline-variant text-xs text-on-surface-variant hover:text-on-surface hover:border-primary/50 hover:bg-primary-container/20 transition-all"
+            >
+              {p.name}
+            </button>
+          ))}
         </div>
 
         <div className="max-h-[55vh] overflow-y-auto -mx-1 px-1">

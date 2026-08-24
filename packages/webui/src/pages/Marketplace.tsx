@@ -593,9 +593,100 @@ const Marketplace: React.FC = () => {
     showToast({ type: 'success', title: '技能已删除' });
   };
 
-  const handleImportSkill = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportSkill = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // .zip 技能包：解压并自动分析（SKILL.md frontmatter / manifest.json / 兜底）
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      try {
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(file);
+        const importSkills: LocalSkill[] = [];
+
+        // 路径 1：SKILL.md（Agent Skills 标准格式，解析 YAML frontmatter）
+        const skillMdEntry = Object.keys(zip.files).find(n => n.endsWith('/SKILL.md') || n === 'SKILL.md');
+        if (skillMdEntry) {
+          const md = await zip.files[skillMdEntry].async('string');
+          const fmMatch = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+          const meta: Record<string, string> = {};
+          if (fmMatch) {
+            for (const line of fmMatch[1].split(/\r?\n/)) {
+              const m = line.match(/^(\w[\w-]*):\s*(.+)$/);
+              if (m) meta[m[1].toLowerCase()] = m[2].trim().replace(/^['"]|['"]$/g, '');
+            }
+          }
+          importSkills.push({
+            id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: meta.name || file.name.replace(/\.zip$/i, ''),
+            description: meta.description || '',
+            content: fmMatch ? (fmMatch[2] || '').trim() : md,
+            version: meta.version || '1.0.0',
+            createdAt: new Date().toISOString(),
+            enabled: true,
+          });
+        }
+
+        // 路径 2：manifest.json / package.json
+        if (importSkills.length === 0) {
+          const manifestEntry = Object.keys(zip.files).find(n =>
+            n === 'manifest.json' || n.endsWith('/manifest.json') || n === 'package.json'
+          );
+          if (manifestEntry) {
+            try {
+              const data = JSON.parse(await zip.files[manifestEntry].async('string'));
+              if (data.name && (data.content || data.description || data.instructions)) {
+                importSkills.push({
+                  id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  name: data.name,
+                  description: data.description || '',
+                  content: data.content || data.instructions || data.description || '',
+                  version: data.version || '1.0.0',
+                  createdAt: new Date().toISOString(),
+                  enabled: true,
+                });
+              }
+            } catch { /* manifest 解析失败继续兜底 */ }
+          }
+        }
+
+        // 路径 3：兜底——用包内文本文件聚合
+        if (importSkills.length === 0) {
+          const textEntries = Object.keys(zip.files).filter(n =>
+            !n.endsWith('/') && /\.(md|txt|json)$/i.test(n)
+          ).slice(0, 20);
+          if (textEntries.length > 0) {
+            const parts: string[] = [];
+            for (const n of textEntries) {
+              parts.push(`### ${n}\n\n${(await zip.files[n].async('string')).slice(0, 5000)}`);
+            }
+            importSkills.push({
+              id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              name: file.name.replace(/\.zip$/i, ''),
+              description: `从技能包导入，包含 ${textEntries.length} 个文件`,
+              content: parts.join('\n\n---\n\n'),
+              version: '1.0.0',
+              createdAt: new Date().toISOString(),
+              enabled: true,
+            });
+          }
+        }
+
+        if (importSkills.length === 0) {
+          showToast({ type: 'error', title: '导入失败', description: '压缩包中未找到 SKILL.md、manifest 或文本文件' });
+          return;
+        }
+        const updatedZip = [...importSkills, ...localSkills];
+        setLocalSkills(updatedZip);
+        saveLocalSkills(updatedZip);
+        showToast({ type: 'success', title: `成功导入技能包`, description: `已分析 ${file.name}` });
+      } catch (err: any) {
+        showToast({ type: 'error', title: '导入失败', description: `无法读取 zip: ${err?.message || err}` });
+      }
+      return;
+    }
+
+    // .json：原有逻辑
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -1198,8 +1289,8 @@ const Marketplace: React.FC = () => {
               <>
                 <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-secondary-container text-on-secondary-container hover:opacity-90 transition-opacity cursor-pointer">
                   <Upload size={14} />
-                  导入
-                  <input type="file" accept=".json" className="hidden" onChange={handleImportSkill} />
+              导入
+              <input type="file" accept=".zip,.json" className="hidden" onChange={handleImportSkill} />
                 </label>
                 <Button variant="filled" size="sm" leftIcon={<Plus size={14} />} onClick={handleCreateSkill}>
                   创建技能
