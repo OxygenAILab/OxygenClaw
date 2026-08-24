@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useI18n } from '../i18n';
 import {
   Activity, DollarSign, Zap, Clock, BarChart3, TrendingUp, PieChart, Trophy,
   AlertCircle, RefreshCw, X, Settings, Database, Eye, EyeOff, Code2,
@@ -359,6 +360,7 @@ function parseCurl(curlStr: string): ParsedCurl | null {
 }
 
 const Dashboard: React.FC = () => {
+  const { t } = useI18n();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -868,7 +870,7 @@ const Dashboard: React.FC = () => {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-on-surface">数据看板</h1>
+          <h1 className="text-2xl font-semibold text-on-surface">{t.header.dashboard}</h1>
           <p className="text-sm text-on-surface-variant mt-1">
             {hasApiData ? '实时监控你的 API 使用情况和模型分析' : hasLocalData ? '本地统计数据 - 基于你的对话历史' : config.enabled ? '暂无数据，点击刷新获取最新数据' : '请配置数据 API 以查看统计数据'}
           </p>

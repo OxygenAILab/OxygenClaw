@@ -1,17 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Globe, ChevronDown, LogOut, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
+﻿import React, { useState, useRef, useEffect } from 'react';
+import { Sun, Moon, Globe, ChevronDown, LogOut, User as UserIcon, Settings as SettingsIcon, Menu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { loadUser, saveUser, UserAccount } from '../store';
 import { useI18n } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Header: React.FC = () => {
+const Header: React.FC<{ onMenuClick?: () => void }> = ({ onMenuClick }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<UserAccount | null>(() => loadUser());
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const { isDark, toggleTheme } = useTheme();
 
   const pageTitle = (() => {
@@ -47,9 +47,17 @@ const Header: React.FC = () => {
       }}
     >
       {/* 左侧：页面标题 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden w-8 h-8 rounded-md flex items-center justify-center transition-colors flex-none"
+          style={{ color: 'var(--md-on-surface-variant)' }}
+          title="菜单"
+        >
+          <Menu size={18} strokeWidth={1.75} />
+        </button>
         <h2
-          className="text-base font-medium"
+          className="text-base font-medium truncate"
           style={{ color: 'var(--md-on-surface)' }}
         >
           {pageTitle}
@@ -124,7 +132,7 @@ const Header: React.FC = () => {
                   </>
                 ) : (
                   <div className="text-sm" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    未登录
+                    {t.nav.notSignedIn}
                   </div>
                 )}
               </div>
@@ -140,7 +148,7 @@ const Header: React.FC = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <UserIcon size={14} strokeWidth={1.75} />
-                  个人资料
+                  {t.account.profile}
                 </button>
                 <button
                   onClick={() => {
@@ -153,7 +161,7 @@ const Header: React.FC = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <SettingsIcon size={14} strokeWidth={1.75} />
-                  设置
+                  {t.header.settings}
                 </button>
               </div>
               <div className="border-t py-1" style={{ borderColor: 'var(--md-outline-variant)' }}>
@@ -166,7 +174,7 @@ const Header: React.FC = () => {
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <LogOut size={14} strokeWidth={1.75} />
-                    退出登录
+                    {t.account.logout}
                   </button>
                 ) : (
                   <button
@@ -180,7 +188,7 @@ const Header: React.FC = () => {
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <LogOut size={14} strokeWidth={1.75} />
-                    登录 / 注册
+                    {t.nav.signInRegister}
                   </button>
                 )}
               </div>

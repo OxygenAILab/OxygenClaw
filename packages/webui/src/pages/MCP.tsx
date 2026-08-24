@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Server, Plus, Copy, RefreshCw, Trash2, ExternalLink,
   CheckCircle, AlertCircle, MoreVertical
@@ -73,6 +73,14 @@ const MCP: React.FC = () => {
     mainAgentId: '',
   });
   const [showConfig, setShowConfig] = useState(false);
+
+  const generateAgentId = () =>
+    `agent-${Math.random().toString(36).slice(2, 6)}${Date.now().toString(36).slice(-4)}`;
+
+  const openAddAgent = () => {
+    setNewAgent({ agentId: generateAgentId(), name: '', description: '', type: 'sub-agent', mainAgentId: '' });
+    setShowAddAgent(true);
+  };
 
   useEffect(() => {
     setAgents(getLocalAgents());
@@ -167,7 +175,7 @@ const MCP: React.FC = () => {
               variant="filled"
               size="sm"
               leftIcon={<Plus size={14} />}
-              onClick={() => setShowAddAgent(true)}
+              onClick={openAddAgent}
             >
               注册 Agent
             </Button>
@@ -324,7 +332,7 @@ const MCP: React.FC = () => {
                     variant="filled"
                     size="md"
                     leftIcon={<Plus size={14} />}
-                    onClick={() => setShowAddAgent(true)}
+                    onClick={openAddAgent}
                   >
                     注册 Agent
                   </Button>
@@ -519,14 +527,22 @@ const MCP: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-on-surface-variant mb-1.5 block">Agent ID</label>
-                <input
-                  type="text"
-                  value={newAgent.agentId}
-                  onChange={e => setNewAgent(prev => ({ ...prev, agentId: e.target.value }))}
-                  placeholder="main-agent@xxxxxxxx 或 sub-agent ID"
-                  className="w-full"
-                />
+                <label className="text-xs font-medium text-on-surface-variant mb-1.5 block">Agent ID（自动生成）</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newAgent.agentId}
+                    readOnly
+                    className="w-full flex-1 opacity-80 cursor-default"
+                  />
+                  <button
+                    onClick={() => setNewAgent(prev => ({ ...prev, agentId: generateAgentId() }))}
+                    className="flex-none px-2.5 py-2 rounded-lg text-xs text-on-surface-variant hover:text-on-surface bg-surface-variant hover:bg-outline-variant transition-colors flex items-center gap-1"
+                    title="重新生成"
+                  >
+                    <RefreshCw size={13} />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-on-surface-variant mb-1.5 block">名称</label>

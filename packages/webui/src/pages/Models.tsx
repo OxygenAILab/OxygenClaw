@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { useI18n } from '../i18n';
 import {
   Search, ChevronDown, ChevronRight, RefreshCw,
   X, Loader2, Server, Copy, Bot,
@@ -34,6 +35,7 @@ interface ModelConfig {
 }
 
 const Models: React.FC = () => {
+  const { t } = useI18n();
   const { showToast } = useToast();
   const [providers, setProviders] = useState<ModelProvider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -719,7 +721,7 @@ const Models: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       <PageHeader
-        title="模型管理"
+        title={t.header.models}
         description="管理可用的 AI 模型，已启用的模型会显示在 Playgrounds"
         actions={
           <>

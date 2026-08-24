@@ -1922,12 +1922,13 @@ const Playgrounds: React.FC = () => {
         </div>
 
         <div className="p-2">
-          <div className="flex bg-surface-variant rounded-full p-0.5 segmented-control mb-2">
+          <div className="flex justify-center mb-2">
+            <div className="inline-flex w-fit bg-surface-variant rounded-full p-0.5 segmented-control">
             <button
               onClick={() => setInteractionMode('chat')}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
+              className={`flex-none px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
                 interactionMode === 'chat'
-                  ? 'bg-surface text-on-surface shadow-sm active'
+                  ? 'bg-surface-container-highest text-on-surface active'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -1935,9 +1936,9 @@ const Playgrounds: React.FC = () => {
             </button>
             <button
               onClick={() => setInteractionMode('task')}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
+              className={`flex-none px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
                 interactionMode === 'task'
-                  ? 'bg-surface text-on-surface shadow-sm active'
+                  ? 'bg-surface-container-highest text-on-surface active'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -1945,15 +1946,17 @@ const Playgrounds: React.FC = () => {
             </button>
             <button
               onClick={() => setInteractionMode('computeruse')}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
+              className={`flex-none px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors segmented-control-item ${
                 interactionMode === 'computeruse'
-                  ? 'bg-surface text-on-surface shadow-sm active'
+                  ? 'bg-surface-container-highest text-on-surface active'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               电脑
             </button>
+            </div>
           </div>
+          {interactionMode !== 'chat' && (
           <button
             onClick={() => {
               setShowTaskHistory(!showTaskHistory);
@@ -1970,6 +1973,7 @@ const Playgrounds: React.FC = () => {
             <Clock size={14} />
             任务历史
           </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -2057,7 +2061,11 @@ const Playgrounds: React.FC = () => {
         </div>
 
         {showTaskHistory && (
-          <div className="border-t border-outline-variant max-h-64 overflow-y-auto" ref={taskHistoryRef}>
+          <div
+            className="border-t border-outline-variant overflow-y-auto animate-slide-down"
+            style={{ resize: 'vertical', minHeight: '8rem', maxHeight: '28rem' }}
+            ref={taskHistoryRef}
+          >
             <div className="p-2 flex items-center justify-between sticky top-0 bg-surface-variant z-10">
               <span className="text-xs font-medium text-on-surface-variant">任务历史</span>
               <button
@@ -2149,34 +2157,14 @@ const Playgrounds: React.FC = () => {
         {/* Top bar */}
         {!isFullscreen && (
         <div className="h-14 border-b border-outline-variant flex items-center justify-between px-4 bg-surface">
-          <div className="flex items-center gap-3">
-            {/* Capability selector - hide in computer use mode */}
-            {interactionMode !== 'computeruse' && (
-              <div className="flex gap-1 bg-surface-variant rounded-full p-0.5">
-                {capabilityModes.map(mode => {
-                  const Icon = mode.icon;
-                  const active = capability === mode.id;
-                  return (
-                    <button
-                      key={mode.id}
-                      onClick={() => handleCapabilitySwitch(mode.id)}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        active
-                          ? 'bg-surface text-on-surface shadow-sm'
-                          : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                      title={mode.desc}
-                    >
-                      <Icon size={12} style={{ color: active ? mode.color : undefined }} />
-                      {mode.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Session title */}
+            <h2 className="text-sm font-medium text-on-surface truncate">
+              {activeConv?.title || (interactionMode === 'chat' ? '新对话' : interactionMode === 'task' ? '新任务' : 'Computer Use')}
+            </h2>
 
             {interactionMode === 'computeruse' && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-surface-variant rounded-full">
+              <div className="flex items-center gap-2 px-3 py-1 bg-surface-variant rounded-full flex-none">
                 <Monitor size={14} className="text-primary" />
                 <span className="text-xs font-medium text-on-surface">Computer Use 模式</span>
               </div>
@@ -2186,7 +2174,7 @@ const Playgrounds: React.FC = () => {
             {interactionMode === 'chat' && models.some(m => m.supportsImageGeneration) && (
               <button
                 onClick={toggleImageGenMode}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-none ${
                   imageGenMode
                     ? 'bg-tertiary-container text-on-tertiary-container shadow-sm'
                     : 'bg-surface-variant text-on-surface-variant hover:text-on-surface'
@@ -2203,7 +2191,7 @@ const Playgrounds: React.FC = () => {
               <button
                 onClick={cancelCurrentTask}
                 disabled={isCancellingTask}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-error-container text-on-error-container hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-error-container text-on-error-container hover:opacity-90 transition-opacity disabled:opacity-50 flex-none"
               >
                 {isCancellingTask ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -2334,7 +2322,7 @@ const Playgrounds: React.FC = () => {
                             return (
                               <button
                                 key={m.id}
-                                onClick={() => setCapability(m.id)}
+                                onClick={() => handleCapabilitySwitch(m.id)}
                                 title={m.desc}
                                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
                                   activeCap

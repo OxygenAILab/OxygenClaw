@@ -39,13 +39,35 @@ const RootRedirect: React.FC = () => {
 
 // 简化布局组件（内联替代旧 Layout.tsx）
 const SimpleLayout: React.FC = () => {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  const location = useLocation();
+
+  // 路由变化时自动收起移动端侧栏
+  React.useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-on-surface">
       <div className="hidden lg:flex">
         <Sidebar />
       </div>
+
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 animate-fade-in"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full animate-fade-in flex flex-col bg-surface border-r border-outline-variant">
+            <Sidebar />
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header onMenuClick={() => setMobileSidebarOpen(true)} />
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
