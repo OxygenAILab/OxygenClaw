@@ -29,3 +29,6 @@ Thumbs.db
 
 # Electron build artifacts
 release/
+
+# Local dev ops scripts
+.dev/

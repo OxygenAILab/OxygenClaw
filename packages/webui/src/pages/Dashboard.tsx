@@ -10,6 +10,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart as RePieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer,
 } from 'recharts';
+import { newapiApi } from '../services/newapi';
 import { dashboardApi, DashboardStats, AppSettings, proxyApi, replaceVariables } from '../services/api';
 import { useToast } from '../components/Toast';
 
@@ -44,7 +45,7 @@ interface ParsedCurl {
   method: string;
   headers: Record<string, string>;
   body: string;
-  authType: 'none' | 'bearer' | 'apikey' | 'custom';
+  authType: 'none' | 'bearer' | 'apikey' | 'custom' | 'newapi';
   authToken: string;
   authHeader: string;
 }
@@ -376,7 +377,7 @@ const Dashboard: React.FC = () => {
     enabled: false,
     url: '',
     method: 'GET' as 'GET' | 'POST' | 'PUT' | 'DELETE',
-    authType: 'none' as 'none' | 'bearer' | 'apikey' | 'custom',
+    authType: 'none' as 'none' | 'bearer' | 'apikey' | 'custom' | 'newapi',
     authToken: '',
     authHeader: '',
     headersJson: '',
@@ -488,7 +489,16 @@ const Dashboard: React.FC = () => {
       }
 
       if (config.enabled && config.url) {
-        if (config.useProxy) {
+        // NewAPI 模式：多端点聚合（login → self/stat/logs）
+        if (config.authType === 'newapi') {
+          const nr = await newapiApi.collect(config.url, replaceVariables(config.authToken, varMap), varMap);
+          if (nr.success && nr.stats) {
+            setRawResponse(nr.stats);
+            result = { success: true, data: nr.stats, rawData: nr.stats, error: null };
+          } else {
+            result = { success: false, data: null, rawData: null, error: nr.error || 'NewAPI 拉取失败', errorType: nr.error?.includes('登录') ? 'auth' : 'http' };
+          }
+        } else if (config.useProxy) {
           const headers: Record<string, string> = {
             'Content-Type': 'application/json',
           };
@@ -628,6 +638,10 @@ const Dashboard: React.FC = () => {
   const balance = hasApiData ? (getNestedValue(stats, 'account.balance') || getNestedValue(stats, 'balance') || 0) : 0;
   const totalRequests = hasApiData ? (getNestedValue(stats, 'usage.totalRequests') || getNestedValue(stats, 'totalRequests') || 0) : 0;
   const totalTokens = hasApiData ? (getNestedValue(stats, 'resources.totalTokens') || getNestedValue(stats, 'totalTokens') || { input: 0, output: 0 }) : 0;
+  // totalTokens 可能是数字（NewAPI 适配器）或 {input, output}；对象且和为 0 时旧写法会短路回对象导致 "[object Object]"
+  const totalTokensNum = typeof totalTokens === 'number'
+    ? totalTokens
+    : ((totalTokens as any)?.input ?? 0) + ((totalTokens as any)?.output ?? 0);
   const avgRpm = hasApiData ? (getNestedValue(stats, 'performance.avgRPM') || getNestedValue(stats, 'avgRpm') || 0) : 0;
   const todayCost = hasApiData ? (getNestedValue(stats, 'usage.todayCost') || getNestedValue(stats, 'todayCost') || 0) : 0;
   const monthCost = hasApiData ? (getNestedValue(stats, 'usage.monthCost') || getNestedValue(stats, 'monthCost') || 0) : 0;
@@ -685,7 +699,7 @@ const Dashboard: React.FC = () => {
   ] : [
     { label: '当前余额', value: formatCurrency(balance), unit: '', icon: DollarSign, color: 'var(--md-success)' },
     { label: '请求次数', value: formatNumber(totalRequests), unit: '次', icon: Activity, color: 'var(--md-primary)' },
-    { label: 'Tokens 消耗', value: formatNumber((totalTokens as any)?.input + (totalTokens as any)?.output || totalTokens), unit: '', icon: Zap, color: 'var(--md-tertiary)' },
+    { label: 'Tokens 消耗', value: formatNumber(totalTokensNum), unit: '', icon: Zap, color: 'var(--md-tertiary)' },
     { label: '平均 RPM', value: formatNumber(avgRpm), unit: '', icon: Clock, color: 'var(--md-warning)' },
   ];
 
@@ -1177,7 +1191,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-outline-variant">
                       <span className="text-sm text-on-surface-variant">Token 用量</span>
-                      <span className="text-sm font-medium">{formatNumber((totalTokens as any)?.input + (totalTokens as any)?.output || totalTokens)}</span>
+                      <span className="text-sm font-medium">{formatNumber(totalTokensNum)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2">
                       <span className="text-sm text-on-surface-variant">成功/失败</span>
@@ -1198,7 +1212,7 @@ const Dashboard: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center py-2 border-b border-outline-variant">
                       <span className="text-sm text-on-surface-variant">统计 Tokens</span>
-                      <span className="text-sm font-medium">{formatNumber((totalTokens as any)?.input + (totalTokens as any)?.output || totalTokens)}</span>
+                      <span className="text-sm font-medium">{formatNumber(totalTokensNum)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2">
                       <span className="text-sm text-on-surface-variant">平均 TPM</span>
@@ -1448,10 +1462,19 @@ const Dashboard: React.FC = () => {
                   <option value="bearer">Bearer Token</option>
                   <option value="apikey">API Key</option>
                   <option value="custom">自定义 Header</option>
+                  <option value="newapi">NewAPI（Sub2API 同源协议）</option>
                 </select>
               </div>
 
-              {(config.authType === 'bearer' || config.authType === 'apikey' || config.authType === 'custom') && (
+              {config.authType === 'newapi' && (
+                <div className="p-3 rounded-lg text-xs text-on-surface-variant" style={{ background: 'var(--md-surface-variant)' }}>
+                  NewAPI 模式：URL 填站点根地址（如 https://api.example.com，不带 /api）；
+                  认证值填 <code className="font-mono">用户名:密码</code>（自动登录）或直接粘贴 access_token。
+                  将自动聚合 /api/user/self、/api/log/self/stat、/api/log/self 三个端点。
+                </div>
+              )}
+
+              {(config.authType === 'bearer' || config.authType === 'apikey' || config.authType === 'custom' || config.authType === 'newapi') && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
                     {config.authType === 'bearer' ? 'Token' : config.authType === 'apikey' ? 'API Key' : '认证值'}

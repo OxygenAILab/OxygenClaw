@@ -443,7 +443,7 @@ export interface AppSettings {
   dashboardApiEnabled?: boolean;
   dashboardApiUrl?: string;
   dashboardApiMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  dashboardApiAuthType?: 'none' | 'bearer' | 'apikey' | 'custom';
+  dashboardApiAuthType?: 'none' | 'bearer' | 'apikey' | 'custom' | 'newapi';
   dashboardApiAuthToken?: string;
   dashboardApiAuthHeader?: string;
   dashboardApiHeaders?: string;

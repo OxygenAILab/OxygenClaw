@@ -1,5 +1,5 @@
 import { Router, Request } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { optionalAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -51,7 +51,7 @@ function validateUrl(url: string): boolean {
   }
 }
 
-router.post('/request', authMiddleware, async (req: Request, res) => {
+router.post('/request', optionalAuth, async (req: Request, res) => {
   try {
     const { url, method = 'GET', headers, body }: ProxyRequest = req.body;
 
