@@ -39,13 +39,21 @@ const todayStartTs = () => {
 };
 
 export const newapiApi = {
+  /**
+   * 凭据（authToken）支持三种格式：
+   *   1. "username:password"      → 自动登录换取 JWT
+   *   2. "userId:accessToken"     → 系统访问令牌 + New-Api-User 头（userId 为纯数字）
+   *   3. 纯 token                 → 直接 Bearer（JWT 或系统令牌均可）
+   * 容错：自动 trim、剥离 "Bearer " 前缀。
+   */
   async collect(
     baseUrl: string,
     credential: string,
     varMap: Record<string, string> = {}
   ): Promise<NewApiCollectResult> {
     const base = baseUrl.replace(/\/+$/, '').replace(/\/api$/, '');
-    let token = credential;
+    let token = (credential || '').trim();
+    let apiUser: string | null = null;
 
     const proxyJson = async (
       method: 'GET' | 'POST',
@@ -54,7 +62,10 @@ export const newapiApi = {
       auth?: string
     ): Promise<{ ok: boolean; status: number; json: any }> => {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (auth) headers['Authorization'] = `Bearer ${auth}`;
+      if (auth) {
+        headers['Authorization'] = `Bearer ${auth}`;
+        if (apiUser) headers['New-Api-User'] = apiUser;
+      }
       const res = await proxyApi.request({
         url: `${base}${ep}`,
         method,
@@ -74,22 +85,34 @@ export const newapiApi = {
       return { ok: res.data.status >= 200 && res.data.status < 300, status: res.data.status, json };
     };
 
-    // username:password → 自动登录换取 JWT
-    if (credential.includes(':')) {
-      const sep = credential.indexOf(':');
-      const username = credential.slice(0, sep);
-      const password = credential.slice(sep + 1);
-      try {
-        const r = await proxyJson('POST', '/api/user/login', { username, password });
-        if (!r.json?.success || !r.json?.data?.access_token) {
-          return { success: false, error: `NewAPI 登录失败: ${r.json?.message || r.status}` };
+    // 剥离可能的 Bearer 前缀与空白
+    token = token.replace(/^Bearer\s+/i, '').trim();
+
+    if (token.includes(':')) {
+      const first = token.indexOf(':');
+      const left = token.slice(0, first).trim();
+      const right = token.slice(first + 1).trim();
+      if (/^\d+$/.test(left)) {
+        // userId:accessToken —— 系统访问令牌模式
+        apiUser = left;
+        token = right;
+      } else {
+        // username:password —— 登录换取 JWT
+        try {
+          const r = await proxyJson('POST', '/api/user/login', { username: left, password: right });
+          if (!r.json?.success || !r.json?.data?.access_token) {
+            return { success: false, error: `NewAPI 登录失败 (HTTP ${r.status}): ${r.json?.message || '响应缺少 access_token'}` };
+          }
+          token = r.json.data.access_token;
+        } catch (e: any) {
+          return { success: false, error: `NewAPI 登录请求失败: ${e?.message || e}` };
         }
-        token = r.json.data.access_token;
-      } catch (e: any) {
-        return { success: false, error: `NewAPI 登录请求失败: ${e?.message || e}` };
       }
     }
     token = token.replace(/\$\{([^}]+)\}/g, (_m, k) => varMap[k] ?? '');
+    if (!token) {
+      return { success: false, error: 'NewAPI 凭据为空' };
+    }
 
     try {
       const [selfR, statR, logsR] = await Promise.all([

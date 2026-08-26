@@ -1467,10 +1467,13 @@ const Dashboard: React.FC = () => {
               </div>
 
               {config.authType === 'newapi' && (
-                <div className="p-3 rounded-lg text-xs text-on-surface-variant" style={{ background: 'var(--md-surface-variant)' }}>
-                  NewAPI 模式：URL 填站点根地址（如 https://api.example.com，不带 /api）；
-                  认证值填 <code className="font-mono">用户名:密码</code>（自动登录）或直接粘贴 access_token。
-                  将自动聚合 /api/user/self、/api/log/self/stat、/api/log/self 三个端点。
+                <div className="p-3 rounded-lg text-xs text-on-surface-variant space-y-1" style={{ background: 'var(--md-surface-variant)' }}>
+                  <div>NewAPI 模式：URL 填站点根地址（如 https://api.example.com，不带 /api）。</div>
+                  <div>认证值支持三种格式：</div>
+                  <div>① <code className="font-mono">用户名:密码</code> — 自动登录</div>
+                  <div>② <code className="font-mono">用户ID:系统访问令牌</code> — 个人设置生成的令牌（ID 为纯数字）</div>
+                  <div>③ 直接粘贴 access_token / JWT</div>
+                  <div className="opacity-70">自动聚合 /api/user/self、/api/log/self/stat、/api/log/self</div>
                 </div>
               )}
 
