@@ -67,7 +67,7 @@ async function startServer() {
     await initDB();
     registerRuntimeAdapters(runtimeWorkerManager);
     runtimeWorkerManager.start();
-    app.listen(PORT, () => {
+    app.listen(PORT, 'localhost', () => {
       console.log(`\n🚀 OxygenClaw Server running on http://localhost:${PORT}`);
       console.log(`📊 API base: http://localhost:${PORT}/api\n`);
     });

@@ -1,16 +1,36 @@
 # FACT — 小氧的长期知识库
 
+> ⚠️ **2026-08-22 决策反转（最新状态，覆盖下文 Electron 决策）**：
+> 泽川决定**放弃 Electron 路线，回归 WebUI**。理由：electron-ui 做到 Phase 2 Part 1
+> 中断，且 webui 包已有 07-21 按 Brief 完成的架构重写（Backend 契约驱动 + SSE-first
+> + React Query），底子是好的。当前工作分支 `feature/webui-regression`（主题：
+> WebUI Regression），变更明细见根目录 `CHANGELOG.md`。electron-ui 包保留代码
+> 不再开发（其暖色视觉资产已被判定为不合当前黑白灰设计语言）。
+> 项目已于 2026-08-22 从归档区激活至 `01-Active\Core-Systems\oxygen-claw`，
+> 并 git init 重建基线（历史归档区无 .git，继承历史不可考）。
+
 ## 活跃项目
 
 ### OxygenClaw (`oxygen-claw`)
-- 下一代多模型 AI Agent 平台,monorepo,版本 `26.0.0-alpha.1`。
+- 下一代多模型 AI Agent 平台,monorepo,版本 `26.0.0-alpha.1`（displayVersion `v26.0 Alpha 1`）。
 - 定位:**终端 + 视觉双修的 Computer Use Claw**(开源)。computeruse 是核心卖点,不是可选项。
-- 六个 package:`core`(引擎:ODC 认知/OMM 记忆/MCP/容器/模型注册)、`server`(Express 后端)、`cli`、`webui`(已废弃)、`electron-ui`(**新前端**)、`gateway`(路由+成本优化)、`shared`。
+- 七个 package:`core`(引擎:ODC 认知/OMM 记忆/MCP/容器/模型注册)、`server`(Express 后端)、`cli`、`webui`(**当前活跃前端**，回归)、`electron-ui`(已搁置,仅存档)、`gateway`(路由+成本优化)、`shared`。
 - 后端技术栈:Express 4 + TypeScript(CommonJS + ES2022)+ tsx。DB 已从 sql.js 迁移到 better-sqlite3。
 - 环境:Windows(win32 x64),Node 24.15.0,npm 11.12.1。
 - 三份根目录 SPEC 是后端契约:`BACKEND_CONVERSATIONS_SPEC.md` / `BACKEND_RUNTIME_TASKS_SPEC.md` / `BACKEND_SETTINGS_SPEC.md`。
 
-## 重大架构决策:WebUI 废弃,转向 Electron
+## 当前工程状态（2026-08-26 小氧更新）
+
+- **NewAPI 集成已打通**（测试站 api.ldwnb666.xyz 实测）：Dashboard 数据源 +
+  Models 拉模型列表，适配器 `webui/src/services/newapi.ts`，三种凭据格式，
+  全部请求走 server proxy（CORS 回避）。proxy 已改 optionalAuth + server 仅监听
+  localhost（安全审计修复）。
+- 设计语言：黑白灰极简（`--md-primary: #0a0a0a`），参照豆包/千问/Codex 范式。
+- 已知环境问题：本机长驻 node 进程会被静默杀死；运维脚本在 `.dev/`（已 gitignore）。
+- 后续队列：MCP 任务节点图、市场多源（skill/MCP 来源抽象）、Dashboard 数据源
+  抽象、UI Remake 三轮、CodeX Harness 研究。
+
+## 历史决策存档:WebUI 废弃,转向 Electron（已被上文反转覆盖）
 
 泽川于 2026-07-21 决定:**完全废弃 WebUI 和 React Native for Windows,采用 Electron 架构**。
 

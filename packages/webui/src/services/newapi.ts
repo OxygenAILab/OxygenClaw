@@ -8,6 +8,12 @@
  *   1. "username:password"      → 自动登录换取 JWT
  *   2. "userId:accessToken"     → 系统访问令牌 + New-Api-User 头（userId 为纯数字）
  *   3. 纯 token                 → 直接 Bearer（JWT 或系统令牌均可）
+ *
+ * 已知限制：
+ * - 格式 1 的密码不能含冒号（首个冒号视为分隔符）；含冒号的密码请使用系统令牌
+ * - quota→美元换算系数硬编码 500000（NewAPI 站点可在 options 中自定义）
+ * - 凭据以明文存于 localStorage（oxygenclaw:newapi-conn）——本地单机工具可接受，
+ *   若未来多用户/远程部署必须迁移到服务端加密存储
  */
 
 import { proxyApi, DashboardStats } from './api';
@@ -145,11 +151,28 @@ export const newapiApi = {
       if (!token) return { success: false, error: 'NewAPI 凭据为空' };
 
       const get = makeRequester(base, apiUser);
+      const endpointFailures: string[] = [];
+      const safeGet = async (ep: string) => {
+        try {
+          return await get('GET', ep, undefined, token);
+        } catch (e: any) {
+          // 审计修复：不再静默吞错——记录失败端点，最终结果可诊断
+          endpointFailures.push(`${ep}: ${e?.message || e}`);
+          console.warn(`[newapi] endpoint failed: ${ep}`, e?.message || e);
+          return { ok: false, status: 0, json: null };
+        }
+      };
+
       const [selfR, statR, logsR] = await Promise.all([
-        get('GET', '/api/user/self', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
-        get('GET', '/api/log/self/stat', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
-        get('GET', '/api/log/self?type=2&page_size=300&p=1', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
+        safeGet('/api/user/self'),
+        safeGet('/api/log/self/stat'),
+        safeGet('/api/log/self?type=2&page_size=300&p=1'),
       ]);
+
+      // 三个端点全部失败 → 视为整体失败，而非返回空数据假装成功
+      if (endpointFailures.length === 3) {
+        return { success: false, error: `NewAPI 全部端点失败: ${endpointFailures.join('; ')}` };
+      }
 
       const stats: DashboardStats = {};
       const today = todayStartTs();
