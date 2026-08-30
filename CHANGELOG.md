@@ -15,6 +15,10 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **UI remake round 2**: model dropdown rebuilt with provider groups,
+  capability badges, context-window hints and selection checkmark;
+  ComputerUse permission control (always-ask / confirm-risky / allow-all)
+  persisted to settings — UI-first for a future backend approval API.
 - **UI remake round 1**: dark-by-default theme (fresh profiles; user
   choice persists); conversation composer now carries the same controls
   as the empty-state hero input (capability pills, attachments, current
