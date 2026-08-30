@@ -123,6 +123,7 @@ router.post('/request', optionalAuth, async (req: Request, res) => {
       }
     });
   } catch (error: any) {
+    console.error('[proxy] request failed:', error?.message || error, error?.stack?.slice(0, 300));
     if (error.name === 'AbortError') {
       return res.status(504).json({
         success: false,

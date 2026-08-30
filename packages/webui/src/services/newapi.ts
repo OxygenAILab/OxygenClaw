@@ -1,13 +1,13 @@
 /**
  * NewAPI (one-api/new-api) 数据源适配器
  *
- * 对接 NewAPI v1.0.0-rc.24 的 JWT Bearer 鉴权与统计端点，
- * 将其响应聚合为 DashboardStats 形状供 Dashboard 消费。
- *
- * 鉴权流程：POST /api/user/login → data.access_token → Authorization: Bearer
- * 凭据格式（authToken 字段）：`username:password` 自动登录，或直接填 access_token
- *
+ * 对接 NewAPI v1.0.0-rc.24 的 JWT Bearer 鉴权与统计端点。
  * 所有请求经 proxyApi（后端转发）以规避浏览器 CORS。
+ *
+ * 凭据（credential）支持三种格式：
+ *   1. "username:password"      → 自动登录换取 JWT
+ *   2. "userId:accessToken"     → 系统访问令牌 + New-Api-User 头（userId 为纯数字）
+ *   3. 纯 token                 → 直接 Bearer（JWT 或系统令牌均可）
  */
 
 import { proxyApi, DashboardStats } from './api';
@@ -16,6 +16,17 @@ export interface NewApiCollectResult {
   success: boolean;
   stats?: DashboardStats;
   error?: string;
+}
+
+export interface NewApiModelsResult {
+  success: boolean;
+  models?: string[];
+  error?: string;
+}
+
+interface ResolvedCredential {
+  token: string;
+  apiUser: string | null;
 }
 
 interface NewApiLogItem {
@@ -29,7 +40,7 @@ interface NewApiLogItem {
   is_stream?: boolean;
 }
 
-/** NewAPI quota 计数 → 美元（默认 500000 quota = $1，可在站点 options 配置） */
+/** NewAPI quota 计数 → 美元（默认 500000 quota = $1） */
 const QUOTA_PER_USD = 500000;
 
 const todayStartTs = () => {
@@ -38,87 +49,106 @@ const todayStartTs = () => {
   return Math.floor(d.getTime() / 1000);
 };
 
+function normalizeBase(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, '').replace(/\/api$/, '');
+}
+
+/** 经 proxyJson 的 JSON 请求器工厂 */
+function makeRequester(base: string, apiUser: string | null) {
+  return async (
+    method: 'GET' | 'POST',
+    ep: string,
+    body?: any,
+    auth?: string
+  ): Promise<{ ok: boolean; status: number; json: any }> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (auth) {
+      headers['Authorization'] = `Bearer ${auth}`;
+      if (apiUser) headers['New-Api-User'] = apiUser;
+    }
+    const res = await proxyApi.request({
+      url: `${base}${ep}`,
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || '代理请求失败');
+    }
+    let json: any = null;
+    const rawBody: any = res.data.body;
+    if (typeof rawBody === 'string') {
+      try { json = JSON.parse(rawBody); } catch { json = null; }
+    } else if (rawBody && typeof rawBody === 'object') {
+      json = rawBody; // proxy 服务端已解析过 JSON
+    }
+    return { ok: res.data.status >= 200 && res.data.status < 300, status: res.data.status, json };
+  };
+}
+
+/** 解析凭据 → 可用的 token（纯 token 直接返回；user:pass 走登录） */
+async function resolveCredential(base: string, credential: string): Promise<ResolvedCredential> {
+  let token = (credential || '').trim();
+  token = token.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token.includes(':')) {
+    return { token, apiUser: null };
+  }
+
+  const first = token.indexOf(':');
+  const left = token.slice(0, first).trim();
+  const right = token.slice(first + 1).trim();
+
+  if (/^\d+$/.test(left)) {
+    // userId:accessToken —— 系统访问令牌
+    return { token: right, apiUser: left };
+  }
+
+  // username:password —— 登录换 JWT
+  const post = makeRequester(base, null);
+  const r = await post('POST', '/api/user/login', { username: left, password: right });
+  if (!r.json?.success || !r.json?.data?.access_token) {
+    throw new Error(`NewAPI 登录失败 (HTTP ${r.status}): ${r.json?.message || '响应缺少 access_token'}`);
+  }
+  return { token: r.json.data.access_token, apiUser: null };
+}
+
 export const newapiApi = {
-  /**
-   * 凭据（authToken）支持三种格式：
-   *   1. "username:password"      → 自动登录换取 JWT
-   *   2. "userId:accessToken"     → 系统访问令牌 + New-Api-User 头（userId 为纯数字）
-   *   3. 纯 token                 → 直接 Bearer（JWT 或系统令牌均可）
-   * 容错：自动 trim、剥离 "Bearer " 前缀。
-   */
+  resolveCredential,
+
+  /** 拉取当前账号可用的模型列表（/api/user/models） */
+  async listModels(baseUrl: string, credential: string): Promise<NewApiModelsResult> {
+    const base = normalizeBase(baseUrl);
+    try {
+      const { token, apiUser } = await resolveCredential(base, credential);
+      const get = makeRequester(base, apiUser);
+      const r = await get('GET', '/api/user/models', undefined, token);
+      if (!r.json?.success || !Array.isArray(r.json.data)) {
+        return { success: false, error: `拉取模型失败 (HTTP ${r.status}): ${r.json?.message || '响应格式异常'}` };
+      }
+      return { success: true, models: r.json.data as string[] };
+    } catch (e: any) {
+      return { success: false, error: `NewAPI 请求失败: ${e?.message || e}` };
+    }
+  },
+
+  /** 聚合统计 → DashboardStats */
   async collect(
     baseUrl: string,
     credential: string,
     varMap: Record<string, string> = {}
   ): Promise<NewApiCollectResult> {
-    const base = baseUrl.replace(/\/+$/, '').replace(/\/api$/, '');
-    let token = (credential || '').trim();
-    let apiUser: string | null = null;
-
-    const proxyJson = async (
-      method: 'GET' | 'POST',
-      ep: string,
-      body?: any,
-      auth?: string
-    ): Promise<{ ok: boolean; status: number; json: any }> => {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (auth) {
-        headers['Authorization'] = `Bearer ${auth}`;
-        if (apiUser) headers['New-Api-User'] = apiUser;
-      }
-      const res = await proxyApi.request({
-        url: `${base}${ep}`,
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (!res.success || !res.data) {
-        throw new Error(res.error || '代理请求失败');
-      }
-      let json: any = null;
-      const rawBody: any = res.data.body;
-      if (typeof rawBody === 'string') {
-        try { json = JSON.parse(rawBody); } catch { json = null; }
-      } else if (rawBody && typeof rawBody === 'object') {
-        json = rawBody; // proxy 服务端已解析过 JSON
-      }
-      return { ok: res.data.status >= 200 && res.data.status < 300, status: res.data.status, json };
-    };
-
-    // 剥离可能的 Bearer 前缀与空白
-    token = token.replace(/^Bearer\s+/i, '').trim();
-
-    if (token.includes(':')) {
-      const first = token.indexOf(':');
-      const left = token.slice(0, first).trim();
-      const right = token.slice(first + 1).trim();
-      if (/^\d+$/.test(left)) {
-        // userId:accessToken —— 系统访问令牌模式
-        apiUser = left;
-        token = right;
-      } else {
-        // username:password —— 登录换取 JWT
-        try {
-          const r = await proxyJson('POST', '/api/user/login', { username: left, password: right });
-          if (!r.json?.success || !r.json?.data?.access_token) {
-            return { success: false, error: `NewAPI 登录失败 (HTTP ${r.status}): ${r.json?.message || '响应缺少 access_token'}` };
-          }
-          token = r.json.data.access_token;
-        } catch (e: any) {
-          return { success: false, error: `NewAPI 登录请求失败: ${e?.message || e}` };
-        }
-      }
-    }
-    token = token.replace(/\$\{([^}]+)\}/g, (_m, k) => varMap[k] ?? '');
-    if (!token) {
-      return { success: false, error: 'NewAPI 凭据为空' };
-    }
-
+    const base = normalizeBase(baseUrl);
     try {
+      const { token: rawToken, apiUser } = await resolveCredential(base, credential);
+      const token = rawToken.replace(/\$\{([^}]+)\}/g, (_m, k) => varMap[k] ?? '');
+      if (!token) return { success: false, error: 'NewAPI 凭据为空' };
+
+      const get = makeRequester(base, apiUser);
       const [selfR, statR, logsR] = await Promise.all([
-        proxyJson('GET', '/api/user/self', undefined, token).catch(e => ({ ok: false, status: 0, json: null, _e: e })),
-        proxyJson('GET', '/api/log/self/stat', undefined, token).catch(e => ({ ok: false, status: 0, json: null, _e: e })),
-        proxyJson('GET', '/api/log/self?type=2&page_size=300&p=1', undefined, token).catch(e => ({ ok: false, status: 0, json: null, _e: e })),
+        get('GET', '/api/user/self', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
+        get('GET', '/api/log/self/stat', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
+        get('GET', '/api/log/self?type=2&page_size=300&p=1', undefined, token).catch(() => ({ ok: false, status: 0, json: null })),
       ]);
 
       const stats: DashboardStats = {};

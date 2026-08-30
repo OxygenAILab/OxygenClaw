@@ -1348,3 +1348,5 @@ export const apiClient = {
 };
 
 export default apiClient;
+
+export { newapiApi } from './newapi';

@@ -12,7 +12,7 @@ import {
   ModelProvider, ModelInfo
 } from '../store';
 import { useToast } from '../components/Toast';
-import { llmApi, ModelProviderData } from '../services/api';
+import { llmApi, newapiApi, ModelProviderData } from '../services/api';
 import { 
   PageHeader, Button, Badge, Card, Grid, Dialog, Dropdown, Input,
   type DropdownItem 
@@ -272,6 +272,70 @@ const Models: React.FC = () => {
         ModelCapabilities: newCapabilities,
       };
     });
+  };
+
+  // ── NewAPI 站点模型拉取（拥抱 NewAPI：一键导入站点可用模型） ──
+  const [showNewapiPull, setShowNewapiPull] = useState(false);
+  const [newapiPullUrl, setNewapiPullUrl] = useState('');
+  const [newapiPullCred, setNewapiPullCred] = useState('');
+  const [newapiPulling, setNewapiPulling] = useState(false);
+  const [newapiFound, setNewapiFound] = useState<string[]>([]);
+  const [newapiSelected, setNewapiSelected] = useState<Set<string>>(new Set());
+
+  const openNewapiPull = () => {
+    setNewapiPullUrl(formConfig.ConnectInfo.url || '');
+    try {
+      const saved = localStorage.getItem('oxygenclaw:newapi-conn');
+      if (saved) {
+        const conn = JSON.parse(saved);
+        if (conn.credential) setNewapiPullCred(conn.credential);
+        if (conn.url && !formConfig.ConnectInfo.url) setNewapiPullUrl(conn.url);
+      }
+    } catch {}
+    setShowNewapiPull(true);
+  };
+
+  const pullNewapiModels = async () => {
+    if (!newapiPullUrl.trim() || !newapiPullCred.trim()) {
+      showToast({ type: 'error', title: '请填写站点地址和凭据' });
+      return;
+    }
+    setNewapiPulling(true);
+    try {
+      const r = await newapiApi.listModels(newapiPullUrl.trim(), newapiPullCred.trim());
+      if (r.success && r.models) {
+        setNewapiFound(r.models);
+        setNewapiSelected(new Set());
+        try {
+          localStorage.setItem('oxygenclaw:newapi-conn', JSON.stringify({ url: newapiPullUrl.trim(), credential: newapiPullCred.trim() }));
+        } catch {}
+        showToast({ type: 'success', title: `拉取到 ${r.models.length} 个模型` });
+      } else {
+        showToast({ type: 'error', title: '拉取失败', description: r.error });
+      }
+    } catch (e: any) {
+      showToast({ type: 'error', title: '拉取失败', description: e?.message });
+    } finally {
+      setNewapiPulling(false);
+    }
+  };
+
+  const importSelectedNewapiModels = () => {
+    const toAdd = [...newapiSelected].filter(m => !formConfig.Models.includes(m));
+    if (toAdd.length === 0) {
+      showToast({ type: 'info', title: '未选择新模型' });
+      return;
+    }
+    setFormConfig(prev => {
+      const caps = { ...prev.ModelCapabilities };
+      for (const m of toAdd) {
+        caps[m] = { supportsVision: false, supportsFiles: false, supportsImageGeneration: false };
+      }
+      return { ...prev, Models: [...prev.Models, ...toAdd], ModelCapabilities: caps };
+    });
+    showToast({ type: 'success', title: `已导入 ${toAdd.length} 个模型` });
+    setNewapiFound([]);
+    setNewapiSelected(new Set());
   };
 
   const toggleModelCapability = (modelName: string, capability: 'supportsVision' | 'supportsFiles' | 'supportsImageGeneration') => {
@@ -1337,9 +1401,92 @@ const Models: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-on-surface-variant mb-1.5 block">
-                      Models ({formConfig.Models.length})
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant">
+                        Models ({formConfig.Models.length})
+                      </label>
+                      <button
+                        onClick={openNewapiPull}
+                        className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+                      >
+                        <Download size={12} />
+                        从 NewAPI 站点拉取
+                      </button>
+                    </div>
+
+                    {showNewapiPull && (
+                      <div className="mb-3 p-3 bg-surface-variant rounded-lg border border-outline-variant space-y-2 animate-slide-down">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newapiPullUrl}
+                            onChange={e => setNewapiPullUrl(e.target.value)}
+                            placeholder="站点地址，如 https://api.example.com"
+                            className="flex-1 px-2.5 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:border-primary focus:outline-none"
+                          />
+                          <input
+                            type="password"
+                            value={newapiPullCred}
+                            onChange={e => setNewapiPullCred(e.target.value)}
+                            placeholder="用户名:密码 或 令牌"
+                            className="flex-1 px-2.5 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:border-primary focus:outline-none"
+                          />
+                          <button
+                            onClick={pullNewapiModels}
+                            disabled={newapiPulling || !newapiPullUrl.trim() || !newapiPullCred.trim()}
+                            className="flex-none px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-medium disabled:opacity-40 flex items-center gap-1"
+                          >
+                            {newapiPulling ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                            拉取
+                          </button>
+                        </div>
+                        {newapiFound.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs text-on-surface-variant">找到 {newapiFound.length} 个模型，勾选导入：</span>
+                              <button
+                                onClick={importSelectedNewapiModels}
+                                disabled={newapiSelected.size === 0}
+                                className="text-xs text-primary font-medium hover:underline disabled:opacity-40"
+                              >
+                                导入所选 ({newapiSelected.size})
+                              </button>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto space-y-1">
+                              {newapiFound.map(m => {
+                                const checked = newapiSelected.has(m);
+                                const already = formConfig.Models.includes(m);
+                                return (
+                                  <label
+                                    key={m}
+                                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                                      already ? 'opacity-40' : checked ? 'bg-primary-container/30 text-on-surface' : 'hover:bg-surface/60 text-on-surface-variant'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked || already}
+                                      disabled={already}
+                                      onChange={e => {
+                                        setNewapiSelected(prev => {
+                                          const next = new Set(prev);
+                                          if (e.target.checked) next.add(m); else next.delete(m);
+                                          return next;
+                                        });
+                                      }}
+                                      className="flex-none"
+                                    />
+                                  <span className="font-mono truncate">{m}</span>
+                                    {already && <span className="ml-auto text-[10px] flex-none">已添加</span>}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex gap-2 mb-3">
                       <input
                         type="text"
