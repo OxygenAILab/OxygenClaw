@@ -15,6 +15,13 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **Marketplace multi-source registry**: add/enable/disable/delete skill
+  sources (built-in OpenClawMP + arbitrary JSON endpoints returning
+  `{skills:[...]}`); aggregated listings with per-source badges and
+  graceful partial-failure handling; JSON-source skills import to local
+  in one click without the CLI.
+- **Dashboard data-source badge**: header always shows the active source
+  (NewAPI / custom API / local stats).
 - **NewAPI data source for Dashboard**: adapter (`services/newapi.ts`) for
   NewAPI v1.0.0-rc.24 JWT auth; aggregates `/api/user/self`,
   `/api/log/self/stat`, `/api/log/self` into DashboardStats (balance,
