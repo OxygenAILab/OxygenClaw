@@ -2828,9 +2828,30 @@ const Playgrounds: React.FC = () => {
                 className="w-full px-4 py-3 bg-transparent resize-none outline-none text-sm text-on-surface placeholder-on-surface-variant border-none !border-0"
               />
               <div className="flex items-center justify-between px-3 pb-3">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {!imageGenMode && (
                     <>
+                      {/* 能力模式 pills（与空状态 hero 输入框一致） */}
+                      {capabilityModes.map(m => {
+                        const Icon = m.icon;
+                        const activeCap = capability === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => handleCapabilitySwitch(m.id)}
+                            title={m.desc}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors ${
+                              activeCap
+                                ? 'bg-primary-container text-on-primary-container font-medium'
+                                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface/60'
+                            }`}
+                          >
+                            <Icon size={12} />
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                      <span className="w-px h-4 bg-outline-variant mx-0.5" />
                       <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
                       <button
                         onClick={() => fileInputRef.current?.click()}
@@ -2877,6 +2898,18 @@ const Playgrounds: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* 当前模型（点击打开模型选择下拉） */}
+                  {!imageGenMode && (
+                    <button
+                      onClick={() => setModelOpen(v => !v)}
+                      disabled={models.length === 0}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-on-surface-variant hover:text-on-surface hover:bg-surface/60 transition-colors disabled:opacity-40 max-w-[160px]"
+                      title="选择模型"
+                    >
+                      <Bot size={12} className="flex-none" />
+                      <span className="truncate">{selectedModel?.name || '选择模型'}</span>
+                    </button>
+                  )}
                   {imageGenMode ? (
                     <button
                       onClick={handleGenerateImage}

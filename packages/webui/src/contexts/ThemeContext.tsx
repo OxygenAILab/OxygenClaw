@@ -16,7 +16,9 @@ const THEME_MODE_KEY = 'oxygenclaw:theme-mode';
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(THEME_MODE_KEY) as ThemeMode | null;
-    return saved || 'system';
+    // 深色为默认（行业范式：豆包/千问/Codex 桌面端均为深色主导）；
+    // 用户显式选择过则尊重其选择
+    return saved || 'dark';
   });
 
   const [isDark, setIsDark] = useState(false);
