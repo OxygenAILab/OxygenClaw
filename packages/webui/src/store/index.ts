@@ -145,6 +145,8 @@ export interface AppSettings {
   imageGenDefaultQuality: string;
   directModelAccess: boolean;
   dashboardApiUseProxy?: boolean;
+  /** ComputerUse 执行权限：always-ask 每步询问 / confirm-risky 有风险操作确认（默认）/ allow-all 全部允许 */
+  computerUsePermission?: 'always-ask' | 'confirm-risky' | 'allow-all';
 }
 
 const SETTINGS_KEY = 'oxygenclaw:settings';

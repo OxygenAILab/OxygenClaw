@@ -6,7 +6,7 @@ import {
   X, Play, FileText, Code, Eye, FileCode, ChevronLeft, ChevronRight,
   Download, RefreshCw, Palette, Settings, Server, Monitor, MousePointer,
   Keyboard, Scroll, CheckCircle, XCircle, Clock, StopCircle,
-  Maximize2, Minimize2, Copy
+  Maximize2, Minimize2, Copy, Check, ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { llmApi, agentApi, multimodalApi, settingsApi, conversationApi, ModelInfo, ChatMessage as ApiChatMessage, directLlmApi, AgentTask } from '../services/api';
@@ -352,6 +352,19 @@ const Playgrounds: React.FC = () => {
   const [editingTitle, setEditingTitle] = useState('');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [appSettings, setAppSettings] = useState<LocalAppSettings>(loadSettings());
+  // ComputerUse 权限（豆包式三级）：持久化到 appSettings
+  const [permOpen, setPermOpen] = useState(false);
+  const cuPermission = appSettings.computerUsePermission || 'confirm-risky';
+  const setCuPermission = (v: 'always-ask' | 'confirm-risky' | 'allow-all') => {
+    const next = { ...appSettings, computerUsePermission: v };
+    setAppSettings(next);
+    saveSettings(next);
+  };
+  const PERMISSION_OPTIONS: { id: 'always-ask' | 'confirm-risky' | 'allow-all'; label: string; desc: string }[] = [
+    { id: 'always-ask', label: '始终询问', desc: '每一步操作前都需要确认' },
+    { id: 'confirm-risky', label: '按需确认', desc: '只对有风险的操作进行询问' },
+    { id: 'allow-all', label: '全部允许', desc: '不受限制地操控电脑，谨慎使用' },
+  ];
   const [isRecording, setIsRecording] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -2217,37 +2230,55 @@ const Playgrounds: React.FC = () => {
                 </span>
                 <ChevronDown size={14} className="text-on-surface-variant" />
               </button>
-              {modelOpen && models.length > 0 && (
-                <div className="absolute right-0 top-full mt-1 w-64 bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden z-20 animate-slide-down">
-                  <div className="p-2 max-h-80 overflow-y-auto">
-                    {models.map(model => (
-                      <button
-                        key={model.id}
-                        onClick={() => selectModel(model.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                          selectedModel?.id === model.id
-                            ? 'bg-primary-container text-on-primary-container'
-                            : 'hover:bg-surface-variant text-on-surface'
-                        }`}
-                      >
-                        <Bot size={14} className="flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate">{model.name}</div>
+              {modelOpen && models.length > 0 && (() => {
+                // 按 provider 分组（千问式分组下拉）
+                const groups = new Map<string, typeof models>();
+                for (const m of models) {
+                  const key = m.provider || '其他';
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(m);
+                }
+                return (
+                <div className="absolute right-0 top-full mt-1 w-72 bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden z-20 animate-slide-down">
+                  <div className="max-h-96 overflow-y-auto">
+                    {[...groups.entries()].map(([provider, list]) => (
+                      <div key={provider}>
+                        <div className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant bg-surface-variant/60">
+                          {provider} · {list.length}
                         </div>
-                        {(model.supportsVision || model.supportsFiles || model.supportsImageGeneration) && (
-                          <div className="flex gap-1">
-                            {model.supportsVision && (
-                              <Eye size={12} className="text-on-surface-variant" />
+                        {list.map(model => (
+                          <button
+                            key={model.id}
+                            onClick={() => selectModel(model.id)}
+                            className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${
+                              selectedModel?.id === model.id
+                                ? 'bg-primary-container text-on-primary-container'
+                                : 'hover:bg-surface-variant text-on-surface'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-medium truncate">{model.name}</span>
+                                {model.supportsVision && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">视觉</span>
+                                )}
+                                {model.supportsImageGeneration && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container">生图</span>
+                                )}
+                                {model.contextWindow && (
+                                  <span className="text-[10px] text-on-surface-variant">{Math.round(model.contextWindow / 1000)}K</span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-on-surface-variant mt-0.5 truncate">
+                                {model.id}
+                              </div>
+                            </div>
+                            {selectedModel?.id === model.id && (
+                              <Check size={14} className="flex-none mt-1" />
                             )}
-                            {model.supportsFiles && (
-                              <Paperclip size={12} className="text-on-surface-variant" />
-                            )}
-                            {model.supportsImageGeneration && (
-                              <Palette size={12} className="text-tertiary" />
-                            )}
-                          </div>
-                        )}
-                      </button>
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                   <div className="p-2 border-t border-outline-variant space-y-1">
@@ -2277,7 +2308,8 @@ const Playgrounds: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -2335,6 +2367,50 @@ const Playgrounds: React.FC = () => {
                               </button>
                             );
                           })}
+                          {/* ComputerUse 权限三级控件（豆包式，仅电脑模式） */}
+                          {interactionMode === 'computeruse' && (
+                            <div className="relative">
+                              <button
+                                onClick={() => setPermOpen(v => !v)}
+                                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                                  cuPermission !== 'confirm-risky'
+                                    ? 'bg-warning-container text-on-warning-container font-medium'
+                                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface/60'
+                                }`}
+                                title={PERMISSION_OPTIONS.find(p => p.id === cuPermission)?.desc}
+                              >
+                                <ShieldCheck size={13} />
+                                {PERMISSION_OPTIONS.find(p => p.id === cuPermission)?.label}
+                                <ChevronDown size={11} />
+                              </button>
+                              {permOpen && (
+                                <div className="absolute bottom-full left-0 mb-2 w-56 bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden z-30 animate-slide-down">
+                                  <div className="py-1">
+                                    {PERMISSION_OPTIONS.map(p => (
+                                      <button
+                                        key={p.id}
+                                        onClick={() => { setCuPermission(p.id); setPermOpen(false); }}
+                                        className={`w-full flex items-start gap-2 px-3 py-2 text-left transition-colors ${
+                                          cuPermission === p.id
+                                            ? 'bg-primary-container text-on-primary-container'
+                                            : 'hover:bg-surface-variant text-on-surface'
+                                        }`}
+                                      >
+                                        <div className="flex-1">
+                                          <div className="text-xs font-medium flex items-center gap-1.5">
+                                            {p.label}
+                                            {cuPermission === p.id && <Check size={11} />}
+                                          </div>
+                                          <div className="text-[11px] opacity-70 mt-0.5">{p.desc}</div>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <span className="w-px h-4 bg-outline-variant mx-0.5" />
                           <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
                           <button
                             onClick={() => fileInputRef.current?.click()}
