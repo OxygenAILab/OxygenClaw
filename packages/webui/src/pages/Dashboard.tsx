@@ -897,6 +897,25 @@ const Dashboard: React.FC = () => {
           >
             <Settings size={16} />
           </button>
+          {/* 数据源徽标：当前统计来自哪个源 */}
+          {config.enabled && config.authType === 'newapi' && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-success-container text-success flex items-center gap-1.5">
+              <Database size={12} />
+              NewAPI
+            </span>
+          )}
+          {config.enabled && config.authType !== 'newapi' && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-secondary-container text-on-secondary-container flex items-center gap-1.5">
+              <Database size={12} />
+              自定义 API
+            </span>
+          )}
+          {!config.enabled && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-variant text-on-surface-variant flex items-center gap-1.5">
+              <Database size={12} />
+              本地统计
+            </span>
+          )}
           {hasApiData && (
             <button
               onClick={() => setShowRawJson(!showRawJson)}

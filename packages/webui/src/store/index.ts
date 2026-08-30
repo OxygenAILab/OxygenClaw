@@ -228,3 +228,47 @@ export function saveUser(user: UserAccount | null): void {
     localStorage.removeItem(USER_KEY);
   }
 }
+
+// ── Marketplace sources (multi-source registry) ──────────────────
+// Watermark: GitHub@NDBlockConnect | BlockConnect@StarsailsClover
+
+export type MarketSourceType = 'openclawmp' | 'json';
+
+export interface MarketSource {
+  id: string;
+  name: string;
+  type: MarketSourceType;
+  /** openclawmp: 保留字段（走内置 server 代理）；json: 返回 {skills:[...]} 的端点 */
+  url: string;
+  enabled: boolean;
+  createdAt: string;
+}
+
+const MARKET_SOURCES_KEY = 'oxygenclaw:market-sources';
+
+const DEFAULT_SOURCES: MarketSource[] = [
+  {
+    id: 'src-openclawmp',
+    name: 'OpenClawMP（StepFun 水产市场）',
+    type: 'openclawmp',
+    url: 'https://openclawmp.stepfun.com',
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
+
+export function loadMarketSources(): MarketSource[] {
+  try {
+    const raw = localStorage.getItem(MARKET_SOURCES_KEY);
+    if (!raw) return [...DEFAULT_SOURCES];
+    const parsed = JSON.parse(raw) as MarketSource[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_SOURCES];
+    return parsed;
+  } catch {
+    return [...DEFAULT_SOURCES];
+  }
+}
+
+export function saveMarketSources(sources: MarketSource[]): void {
+  localStorage.setItem(MARKET_SOURCES_KEY, JSON.stringify(sources));
+}

@@ -3,10 +3,19 @@ import {
   Search, Plus, ExternalLink, Upload, X, Trash2, Play, Pause,
   RefreshCw, Download, Check, Terminal, Package,
   Loader2, Zap, Code, BarChart3, PenTool,
-  Grid, Sparkles, AlertCircle
+  Grid, Sparkles, AlertCircle, Store
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
-import { MarketplaceSkill, cliApi, marketplaceApi } from '../services/api';
+import { MarketplaceSkill, cliApi, marketplaceApi, proxyApi } from '../services/api';
+import { loadMarketSources, saveMarketSources, MarketSource } from '../store';
+
+/** 带来源标记的技能项 */
+export interface SourcedSkill extends MarketplaceSkill {
+  __sourceName: string;
+  __sourceType: MarketSource['type'];
+  /** json 源技能的原始内容（可直接导入本地） */
+  __importable?: { content: string };
+}
 import { PageHeader, Button, Badge, Card, Dialog, EmptyState, Input } from '../components/ui';
 
 const LOCAL_SKILLS_KEY = 'oxygenclaw:local-skills';
@@ -87,7 +96,10 @@ const Marketplace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('local');
   const [localSkills, setLocalSkills] = useState<LocalSkill[]>(getLocalSkills());
   const [installedSkills, setInstalledSkills] = useState<InstalledSkill[]>([]);
-  const [marketplaceSkills, setMarketplaceSkills] = useState<MarketplaceSkill[]>([]);
+  const [marketplaceSkills, setMarketplaceSkills] = useState<SourcedSkill[]>([]);
+  const [marketSources, setMarketSources] = useState<MarketSource[]>(loadMarketSources());
+  const [showSourceManager, setShowSourceManager] = useState(false);
+  const [newSource, setNewSource] = useState({ name: '', url: '', type: 'json' as MarketSource['type'] });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cliStatus, setCliStatus] = useState<CliStatus>(getCliStatus());
@@ -155,23 +167,117 @@ const Marketplace: React.FC = () => {
   const loadMarketplaceSkills = useCallback(async () => {
     setIsLoadingMarketplace(true);
     setMarketplaceError(null);
-    try {
-      const result = await marketplaceApi.getSkills();
-      if (result.success && result.data) {
-        const resp = result.data as unknown as MarketplaceApiResponse;
-        const skills = resp.skills || (Array.isArray(result.data) ? result.data as MarketplaceSkill[] : []);
-        setMarketplaceSkills(skills);
-      } else {
-        setMarketplaceError(result.error || '获取水产市场技能失败');
-        setMarketplaceSkills([]);
+
+    const enabledSources = marketSources.filter(s => s.enabled);
+    const aggregated: SourcedSkill[] = [];
+    const errors: string[] = [];
+
+    await Promise.all(enabledSources.map(async (src) => {
+      try {
+        if (src.type === 'openclawmp') {
+          const result = await marketplaceApi.getSkills();
+          if (result.success && result.data) {
+            const resp = result.data as unknown as MarketplaceApiResponse;
+            const skills = resp.skills || (Array.isArray(result.data) ? result.data as MarketplaceSkill[] : []);
+            for (const s of skills) {
+              aggregated.push({ ...s, __sourceName: src.name, __sourceType: src.type });
+            }
+          } else {
+            errors.push(`${src.name}: ${result.error || '拉取失败'}`);
+          }
+        } else if (src.type === 'json') {
+          // 约定形状：{skills: [...]} 或直接数组；字段兼容 name/description/version/content
+          const res = await proxyApi.request({ url: src.url, method: 'GET' });
+          if (!res.success || !res.data) throw new Error(res.error || '代理请求失败');
+          let payload: any = res.data.body;
+          if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch { throw new Error('响应不是有效 JSON'); }
+          }
+          const list: any[] = Array.isArray(payload) ? payload : (Array.isArray(payload?.skills) ? payload.skills : []);
+          for (const s of list) {
+            if (!s?.name) continue;
+            aggregated.push({
+              id: s.id || `json-${src.id}-${s.name}`,
+              name: s.name,
+              description: s.description || '',
+              version: s.version || '1.0.0',
+              author: s.author,
+              category: s.category,
+              tags: s.tags,
+              __sourceName: src.name,
+              __sourceType: src.type,
+              __importable: s.content ? { content: s.content } : undefined,
+            });
+          }
+        }
+      } catch (e: any) {
+        errors.push(`${src.name}: ${e?.message || e}`);
       }
-    } catch (e: any) {
-      setMarketplaceError(e?.message || '获取水产市场技能失败');
-      setMarketplaceSkills([]);
-    } finally {
-      setIsLoadingMarketplace(false);
+    }));
+
+    setMarketplaceSkills(aggregated);
+    if (errors.length > 0) {
+      setMarketplaceError(errors.length === enabledSources.length ? errors.join('；') : null);
+      if (errors.length < enabledSources.length && aggregated.length > 0) {
+        showToast({ type: 'warning', title: '部分源拉取失败', description: errors.join('；').slice(0, 120) });
+      }
     }
-  }, []);
+    setIsLoadingMarketplace(false);
+  }, [marketSources]);
+
+  // ── 源管理 ──
+  const persistSources = (next: MarketSource[]) => {
+    setMarketSources(next);
+    saveMarketSources(next);
+  };
+
+  const addSource = () => {
+    if (!newSource.name.trim() || !newSource.url.trim()) {
+      showToast({ type: 'error', title: '请填写源名称和地址' });
+      return;
+    }
+    const src: MarketSource = {
+      id: `src-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: newSource.name.trim(),
+      type: newSource.type,
+      url: newSource.url.trim(),
+      enabled: true,
+      createdAt: new Date().toISOString(),
+    };
+    persistSources([...marketSources, src]);
+    setNewSource({ name: '', url: '', type: 'json' });
+    showToast({ type: 'success', title: '源已添加' });
+  };
+
+  const toggleSource = (id: string) => {
+    persistSources(marketSources.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s));
+  };
+
+  const removeSource = (id: string) => {
+    if (!confirm('确定删除这个源吗？')) return;
+    persistSources(marketSources.filter(s => s.id !== id));
+  };
+
+  /** json 源技能 → 直接导入本地技能库（无需 CLI） */
+  const handleImportFromSource = (skill: SourcedSkill) => {
+    if (!skill.__importable?.content) {
+      showToast({ type: 'error', title: '该技能缺少 content 字段，无法直接导入', description: '请到源仓库获取完整技能包' });
+      return;
+    }
+    const newSkill: LocalSkill = {
+      id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: skill.name,
+      description: skill.description || '',
+      content: skill.__importable.content,
+      version: skill.version || '1.0.0',
+      createdAt: new Date().toISOString(),
+      enabled: true,
+    };
+    const updated = [newSkill, ...localSkills];
+    setLocalSkills(updated);
+    saveLocalSkills(updated);
+    showToast({ type: 'success', title: '已导入本地', description: skill.name });
+  };
 
   const searchMarketplaceSkills = useCallback(async (query: string, category: string) => {
     setIsLoadingMarketplace(true);
@@ -953,18 +1059,27 @@ const Marketplace: React.FC = () => {
             );
           })}
         </div>
-        <button
-          onClick={handleRefreshMarketplace}
-          disabled={isLoadingMarketplace}
-          className="px-4 py-2 bg-surface-variant text-on-surface-variant rounded-full text-sm font-medium flex items-center gap-1.5 hover:bg-outline-variant/50 transition-colors"
-        >
-          {isLoadingMarketplace ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-          刷新
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSourceManager(true)}
+            className="px-4 py-2 bg-surface-variant text-on-surface-variant rounded-full text-sm font-medium flex items-center gap-1.5 hover:bg-outline-variant/50 transition-colors"
+          >
+            <Store size={14} />
+            管理源 ({marketSources.filter(s => s.enabled).length})
+          </button>
+          <button
+            onClick={handleRefreshMarketplace}
+            disabled={isLoadingMarketplace}
+            className="px-4 py-2 bg-surface-variant text-on-surface-variant rounded-full text-sm font-medium flex items-center gap-1.5 hover:bg-outline-variant/50 transition-colors"
+          >
+            {isLoadingMarketplace ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+            刷新
+          </button>
+        </div>
       </div>
 
       {isLoadingMarketplace && (
@@ -1018,6 +1133,12 @@ const Marketplace: React.FC = () => {
                       <span className="text-xs px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-full">
                         v{skill.version}
                       </span>
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded-full border border-outline-variant text-on-surface-variant"
+                        title={`来源: ${skill.__sourceName}`}
+                      >
+                        {skill.__sourceName}
+                      </span>
                       {installed && (
                         <span className="text-xs px-2 py-0.5 bg-success-container text-success rounded-full flex items-center gap-1">
                           <Check size={10} />
@@ -1069,6 +1190,14 @@ const Marketplace: React.FC = () => {
                       ) : (
                         '卸载'
                       )}
+                    </button>
+                  ) : skill.__sourceType === 'json' ? (
+                    <button
+                      onClick={() => handleImportFromSource(skill)}
+                      className="px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                    >
+                      <Download size={12} />
+                      导入本地
                     </button>
                   ) : (
                     <button
@@ -1470,6 +1599,93 @@ const Marketplace: React.FC = () => {
                 </button>
               ))}
             </div>
+      </Dialog>
+
+      {/* 源管理弹窗 */}
+      <Dialog
+        open={showSourceManager}
+        onClose={() => setShowSourceManager(false)}
+        title="管理市场源"
+        description="技能可来自多个市场。JSON 源需返回 {skills:[{name, description, version, content?}]} 形状。"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="text" size="sm" onClick={() => setShowSourceManager(false)}>
+              完成
+            </Button>
+            <Button variant="filled" size="sm" leftIcon={<RefreshCw size={14} />} onClick={loadMarketplaceSkills}>
+              重新聚合
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-2">
+            {marketSources.map(src => (
+              <div key={src.id} className="flex items-center gap-3 p-3 bg-surface-variant rounded-lg">
+                <div className={`toggle-switch ${src.enabled ? 'active' : ''}`} onClick={() => toggleSource(src.id)}>
+                  <div className="toggle-switch-thumb" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-on-surface flex items-center gap-2">
+                    {src.name}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-outline-variant text-on-surface-variant">
+                      {src.type}
+                    </span>
+                    {!src.enabled && <span className="text-xs text-on-surface-variant">已停用</span>}
+                  </div>
+                  <div className="text-xs text-on-surface-variant truncate font-mono">{src.url}</div>
+                </div>
+                {src.id !== 'src-openclawmp' && (
+                  <button
+                    onClick={() => removeSource(src.id)}
+                    className="p-1.5 rounded-lg text-error hover:bg-error-container/30 transition-colors flex-none"
+                    title="删除"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-outline-variant pt-4">
+            <div className="text-xs font-medium text-on-surface-variant mb-2">添加新源</div>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSource.name}
+                  onChange={e => setNewSource(p => ({ ...p, name: e.target.value }))}
+                  placeholder="源名称"
+                  className="flex-1"
+                />
+                <select
+                  value={newSource.type}
+                  onChange={e => setNewSource(p => ({ ...p, type: e.target.value as MarketSource['type'] }))}
+                  style={{ minWidth: 120 }}
+                >
+                  <option value="json">JSON 端点</option>
+                  <option value="openclawmp">OpenClawMP</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                value={newSource.url}
+                onChange={e => setNewSource(p => ({ ...p, url: e.target.value }))}
+                placeholder="源地址（JSON 端点 URL）"
+                className="w-full"
+              />
+              <button
+                onClick={addSource}
+                className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+              >
+                <Plus size={14} />
+                添加源
+              </button>
+            </div>
+          </div>
+        </div>
       </Dialog>
       </div>
     </div>
