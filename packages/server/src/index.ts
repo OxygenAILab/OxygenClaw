@@ -21,7 +21,7 @@ import { registerRuntimeAdapters } from './runtime/adapters';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 const PACKAGE_VERSION = '26.0.0-alpha.1';
 const DISPLAY_VERSION = 'v26.0 Alpha 1';
 
