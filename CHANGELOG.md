@@ -15,6 +15,10 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **UI remake round 1**: dark-by-default theme (fresh profiles; user
+  choice persists); conversation composer now carries the same controls
+  as the empty-state hero input (capability pills, attachments, current
+  model button) per Doubao/Qwen references.
 - **Marketplace multi-source registry**: add/enable/disable/delete skill
   sources (built-in OpenClawMP + arbitrary JSON endpoints returning
   `{skills:[...]}`); aggregated listings with per-source badges and
