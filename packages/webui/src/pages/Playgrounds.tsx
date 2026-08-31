@@ -6,7 +6,7 @@ import {
   X, Play, FileText, Code, Eye, FileCode, ChevronLeft, ChevronRight,
   Download, RefreshCw, Palette, Settings, Server, Monitor, MousePointer,
   Keyboard, Scroll, CheckCircle, XCircle, Clock, StopCircle,
-  Maximize2, Minimize2, Copy, Check, ShieldCheck
+  Maximize2, Minimize2, Copy, Check, ShieldCheck, Pin, PinOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { llmApi, agentApi, multimodalApi, settingsApi, conversationApi, ModelInfo, ChatMessage as ApiChatMessage, directLlmApi, AgentTask } from '../services/api';
@@ -46,8 +46,7 @@ const capabilityModes: {
 
 interface Conversation {
   id: string;
-  title: string;
-  mode: 'chat' | 'task' | 'computeruse';
+  title: string;  mode: 'chat' | 'task' | 'computeruse';
   capability: CapabilityMode;
   modelId: string;
   createdAt: number;
@@ -56,6 +55,7 @@ interface Conversation {
   agentSteps?: AgentStep[];
   computerUseSteps?: AgentStep[];
   taskId?: string;
+  pinned?: boolean;
 }
 
 interface ChatMessage {
@@ -550,6 +550,15 @@ const Playgrounds: React.FC = () => {
     setConversations(prev =>
       prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c)
     );
+  };
+
+  // 置顶切换（不触碰 updatedAt）
+  const toggleConvPin = (id: string) => {
+    setConversations(prev => {
+      const next = prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c);
+      return next;
+    });
+    setMenuOpen(null);
   };
 
   const deleteConv = (id: string) => {
@@ -1906,7 +1915,33 @@ const Playgrounds: React.FC = () => {
     saveCanvasState(canvasState);
   }, [canvasState.files, canvasState.activeFileId, canvasState.viewMode]);
 
-  const filteredConvs = conversations.filter(c => c.mode === interactionMode);
+  const filteredConvs = conversations
+    .filter(c => c.mode === interactionMode)
+    .sort((a, b) => {
+      // 置顶优先，其余按更新时间倒序
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return b.updatedAt - a.updatedAt;
+    });
+
+  // 按日期分组（置顶 / 今天 / 近 7 天 / 更早）
+  const groupedConvs = (() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const weekStart = todayStart - 6 * 86400000;
+    const groups: { label: string; items: typeof filteredConvs }[] = [
+      { label: '📌 置顶', items: [] },
+      { label: '今天', items: [] },
+      { label: '近 7 天', items: [] },
+      { label: '更早', items: [] },
+    ];
+    for (const c of filteredConvs) {
+      if (c.pinned) groups[0].items.push(c);
+      else if (c.updatedAt >= todayStart) groups[1].items.push(c);
+      else if (c.updatedAt >= weekStart) groups[2].items.push(c);
+      else groups[3].items.push(c);
+    }
+    return groups.filter(g => g.items.length > 0);
+  })();
 
   const activeCanvasFile = canvasState.files.find(f => f.id === canvasState.activeFileId);
 
@@ -1998,7 +2033,13 @@ const Playgrounds: React.FC = () => {
               </div>
             </div>
           ) : (
-            filteredConvs.map(conv => (
+            groupedConvs.map(group => (
+              <div key={group.label} className="mb-2">
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant first:pt-0">
+                  {group.label}
+                </div>
+                <div className="space-y-1">
+            {group.items.map(conv => (
               <div
                 key={conv.id}
                 className={`group relative rounded-lg cursor-pointer transition-colors ${
@@ -2055,6 +2096,13 @@ const Playgrounds: React.FC = () => {
                     onClick={e => e.stopPropagation()}
                   >
                     <button
+                      onClick={() => toggleConvPin(conv.id)}
+                      className="w-full px-3.5 py-2 text-left text-sm text-on-surface hover:bg-surface-variant flex items-center gap-2.5 transition-colors"
+                    >
+                      {conv.pinned ? <PinOff size={15} /> : <Pin size={15} />}
+                      {conv.pinned ? '取消置顶' : '置顶'}
+                    </button>
+                    <button
                       onClick={() => startRename(conv)}
                       className="w-full px-3.5 py-2 text-left text-sm text-on-surface hover:bg-surface-variant flex items-center gap-2.5 transition-colors"
                     >
@@ -2068,6 +2116,9 @@ const Playgrounds: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </div>
+            ))}
+                </div>
               </div>
             ))
           )}
