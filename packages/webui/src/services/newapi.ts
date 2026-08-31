@@ -154,9 +154,17 @@ export const newapiApi = {
       const endpointFailures: string[] = [];
       const safeGet = async (ep: string) => {
         try {
-          return await get('GET', ep, undefined, token);
+          const r = await get('GET', ep, undefined, token);
+          // 业务失败（HTTP 错误或 success:false）同样计入失败——
+          // 401/令牌失效等若不在此暴露，会伪装成"成功但无数据"
+          if (!r.ok || r.json?.success === false) {
+            const reason = r.json?.message || `HTTP ${r.status}`;
+            endpointFailures.push(`${ep}: ${reason}`);
+            console.warn(`[newapi] endpoint business-failed: ${ep}`, reason);
+            return { ok: false, status: r.status, json: null };
+          }
+          return r;
         } catch (e: any) {
-          // 审计修复：不再静默吞错——记录失败端点，最终结果可诊断
           endpointFailures.push(`${ep}: ${e?.message || e}`);
           console.warn(`[newapi] endpoint failed: ${ep}`, e?.message || e);
           return { ok: false, status: 0, json: null };
