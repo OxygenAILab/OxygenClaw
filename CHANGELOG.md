@@ -15,6 +15,9 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **UI remake round 3**: Doubao-style account center dialog (avatar, local
+  badge, profile/settings/theme/sign-out); conversations support pinning
+  and date-grouped lists (Pinned / Today / Last 7 days / Older).
 - **UI remake round 2**: model dropdown rebuilt with provider groups,
   capability badges, context-window hints and selection checkmark;
   ComputerUse permission control (always-ask / confirm-risky / allow-all)
