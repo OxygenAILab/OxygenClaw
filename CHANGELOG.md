@@ -15,6 +15,10 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **UI crawl takeaways**: collapsible sidebar (64px icon rail <-> 240px,
+  300ms transition, persisted) and hotkey-hint slots adopted from crawled
+  Doubao/Qianwen layout structures; timed-task entry and tiptap composer
+  recorded as future items.
 - **UI remake round 3**: Doubao-style account center dialog (avatar, local
   badge, profile/settings/theme/sign-out); conversations support pinning
   and date-grouped lists (Pinned / Today / Last 7 days / Older).
