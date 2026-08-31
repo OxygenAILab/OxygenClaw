@@ -94,7 +94,11 @@ function makeRequester(base: string, apiUser: string | null) {
 
 /** 解析凭据 → 可用的 token（纯 token 直接返回；user:pass 走登录） */
 async function resolveCredential(base: string, credential: string): Promise<ResolvedCredential> {
-  let token = (credential || '').trim();
+  // 中文输入法容错：全角冒号→半角、全角空格→半角、去首尾空白
+  let token = (credential || '')
+    .replace(/：/g, ':')
+    .replace(/\u3000/g, ' ')
+    .trim();
   token = token.replace(/^Bearer\s+/i, '').trim();
 
   if (!token.includes(':')) {
