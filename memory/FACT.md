@@ -1,7 +1,11 @@
 # FACT — 小氧的长期知识库
 
-> ⚠️ **2026-08-22 决策反转（最新状态，覆盖下文 Electron 决策）**：
-> 泽川决定**放弃 Electron 路线，回归 WebUI**。理由：electron-ui 做到 Phase 2 Part 1
+> 🎯 **2026-09-05 战略决定（最新）**：OpenOxygen Next 与 OxygenClaw **合并为
+> 双 Harness 平台**，用户可选择 Agent Harness（原生 OpenOxygen 引擎 /
+> Claw 生态引擎）。技术依据见 `docs/CODEX_HARNESS_RESEARCH.md`——跨 Harness
+> 互联建议以 MCP 为标准总线。本阶段（WebUI 回归）已收尾，交接见 `HANDOFF.md`。
+>
+> ⚠️ **2026-08-22 决策反转**：泽川决定**放弃 Electron 路线，回归 WebUI**。理由：electron-ui 做到 Phase 2 Part 1
 > 中断，且 webui 包已有 07-21 按 Brief 完成的架构重写（Backend 契约驱动 + SSE-first
 > + React Query），底子是好的。当前工作分支 `feature/webui-regression`（主题：
 > WebUI Regression），变更明细见根目录 `CHANGELOG.md`。electron-ui 包保留代码
