@@ -232,7 +232,7 @@ export function saveUser(user: UserAccount | null): void {
 }
 
 // ── Marketplace sources (multi-source registry) ──────────────────
-// Watermark: GitHub@NDBlockConnect | BlockConnect@StarsailsClover
+// Watermark: GitHub@OxygenAILab | OxygenAILab@StarsailsClover
 
 export type MarketSourceType = 'openclawmp' | 'json';
 

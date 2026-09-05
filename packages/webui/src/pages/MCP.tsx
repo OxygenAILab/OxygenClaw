@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import {
   Server, Plus, Copy, RefreshCw, Trash2, ExternalLink,
-  CheckCircle, AlertCircle, MoreVertical
+  CheckCircle, AlertCircle, MoreVertical, Network, List
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import {
@@ -36,6 +36,89 @@ interface McpTask {
 
 const LOCAL_MCP_AGENTS_KEY = 'oxygenclaw:mcp-agents';
 const LOCAL_MCP_TASKS_KEY = 'oxygenclaw:mcp-tasks';
+
+// ── 任务节点图（手写 SVG，黑白灰语言）────────────────────────
+// Watermark: GitHub@NDBlockConnect | BlockConnect@StarsailsClover
+
+const TASK_STATUS_COLOR: Record<string, string> = {
+  completed: 'var(--md-success)',
+  processing: 'var(--md-primary)',
+  assigned: 'var(--md-warning)',
+  failed: 'var(--md-error)',
+};
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  completed: '已完成',
+  processing: '处理中',
+  assigned: '已分配',
+  failed: '失败',
+};
+
+/** 单个任务的三节点流：Main Agent → Task → Sub Agent */
+function TaskFlow({ task, y }: { task: McpTask; y: number }) {
+  const color = TASK_STATUS_COLOR[task.status] || 'var(--md-on-surface-variant)';
+  const mainLabel = task.main_agent_id.length > 14 ? task.main_agent_id.slice(0, 13) + '…' : task.main_agent_id;
+  const subLabel = task.sub_agent_id ? (task.sub_agent_id.length > 14 ? task.sub_agent_id.slice(0, 13) + '…' : task.sub_agent_id) : '未分配';
+  const nodeBox = (x: number, title: string, sub: string, stroke: string, dashed?: boolean) => (
+    <g>
+      <rect
+        x={x} y={y} width={170} height={56} rx={10}
+        fill="var(--md-surface)"
+        stroke={stroke} strokeWidth={1.5}
+        strokeDasharray={dashed ? '5 4' : undefined}
+      />
+      <text x={x + 85} y={y + 23} textAnchor="middle" fontSize={12} fontWeight={500} fill="var(--md-on-surface)">
+        {title}
+      </text>
+      <text x={x + 85} y={y + 41} textAnchor="middle" fontSize={10} fill="var(--md-on-surface-variant)">
+        {sub}
+      </text>
+    </g>
+  );
+  const arrow = (x1: number, x2: number, dashed?: boolean) => (
+    <g>
+      <line
+        x1={x1} y1={y + 28} x2={x2 - 8} y2={y + 28}
+        stroke={color} strokeWidth={1.5}
+        strokeDasharray={dashed ? '4 4' : undefined}
+        markerEnd="url(#taskArrow)"
+      />
+    </g>
+  );
+  const flowing = task.status === 'processing';
+  return (
+    <g>
+      {nodeBox(16, 'Main Agent', mainLabel, 'var(--md-outline)')}
+      {arrow(186, 262, flowing)}
+      {nodeBox(262, task.title.length > 15 ? task.title.slice(0, 14) + '…' : task.title, TASK_STATUS_LABEL[task.status] || task.status, color, flowing)}
+      {arrow(432, 508, flowing)}
+      {nodeBox(508, 'Sub Agent', subLabel, task.sub_agent_id ? 'var(--md-outline)' : 'var(--md-outline-variant)', !task.sub_agent_id)}
+      <text x={700} y={y + 32} textAnchor="end" fontSize={10} fill="var(--md-on-surface-variant)">
+        {new Date(task.created_at).toLocaleDateString()}
+      </text>
+    </g>
+  );
+}
+
+/** 任务节点图视图：Main → Task → Sub 拓扑 */
+function TaskGraph({ tasks }: { tasks: McpTask[] }) {
+  const rowH = 96;
+  const height = Math.max(tasks.length * rowH + 24, 120);
+  return (
+    <div className="card overflow-x-auto">
+      <svg width="720" height={height} style={{ minWidth: 720, display: 'block' }}>
+        <defs>
+          <marker id="taskArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="var(--md-on-surface-variant)" />
+          </marker>
+        </defs>
+        {tasks.map((t, i) => (
+          <TaskFlow key={t.id} task={t} y={16 + i * rowH} />
+        ))}
+      </svg>
+    </div>
+  );
+}
 
 function getLocalAgents(): McpAgent[] {
   try {
@@ -73,6 +156,7 @@ const MCP: React.FC = () => {
     mainAgentId: '',
   });
   const [showConfig, setShowConfig] = useState(false);
+  const [taskView, setTaskView] = useState<'graph' | 'list'>('graph');
 
   const generateAgentId = () =>
     `agent-${Math.random().toString(36).slice(2, 6)}${Date.now().toString(36).slice(-4)}`;
@@ -408,14 +492,37 @@ const MCP: React.FC = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-on-surface">任务列表</h2>
-            <Button
-              variant="tonal"
-              size="sm"
-              leftIcon={<RefreshCw size={14} />}
-              onClick={() => { setTasks(getLocalTasks()); }}
-            >
-              刷新
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* 视图切换（节点图 / 列表） */}
+              <div className="inline-flex bg-surface-variant rounded-full p-0.5">
+                <button
+                  onClick={() => setTaskView('graph')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                    taskView === 'graph' ? 'bg-surface-container-highest text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <Network size={13} />
+                  节点图
+                </button>
+                <button
+                  onClick={() => setTaskView('list')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                    taskView === 'list' ? 'bg-surface-container-highest text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <List size={13} />
+                  列表
+                </button>
+              </div>
+              <Button
+                variant="tonal"
+                size="sm"
+                leftIcon={<RefreshCw size={14} />}
+                onClick={() => { setTasks(getLocalTasks()); }}
+              >
+                刷新
+              </Button>
+            </div>
           </div>
 
           {tasks.length === 0 ? (
@@ -426,6 +533,8 @@ const MCP: React.FC = () => {
                 description="通过 Main Agent 分配任务给 Sub Agent"
               />
             </Card>
+          ) : taskView === 'graph' ? (
+            <TaskGraph tasks={tasks} />
           ) : (
             <div className="space-y-3">
               {tasks.map(task => (

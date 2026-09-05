@@ -11,7 +11,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 
-// Watermark: GitHub@NDBlockConnect | BlockConnect@StarsailsClover
+// Watermark: GitHub@OxygenAILab | OxygenAILab@StarsailsClover
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hotkey: 'G+D' },

@@ -1,6 +1,6 @@
 # Changelog
 
-<!-- GitHub@NDBlockConnect | BlockConnect@StarsailsClover -->
+<!-- GitHub@OxygenAILab | OxygenAILab@StarsailsClover -->
 
 All notable changes to OxygenClaw are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); versioning follows the
