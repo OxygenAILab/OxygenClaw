@@ -15,6 +15,9 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **MCP task node graph (item 12)**: per-task SVG topology
+  (Main Agent → Task → Sub Agent) with status colors, flowing connectors
+  while processing, and a segmented graph/list toggle — zero dependencies.
 - **NewAPI quota_data adoption (rc.27 study)**: Dashboard now prefers the
   pre-aggregated `/api/data/self` endpoint (model x day, 30-day window,
   exact counts) for daily/model cost stats; monthCost card gains full-window
