@@ -15,6 +15,10 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **NewAPI quota_data adoption (rc.27 study)**: Dashboard now prefers the
+  pre-aggregated `/api/data/self` endpoint (model x day, 30-day window,
+  exact counts) for daily/model cost stats; monthCost card gains full-window
+  accuracy, log endpoint kept for token totals and as fallback.
 - **UI crawl takeaways**: collapsible sidebar (64px icon rail <-> 240px,
   300ms transition, persisted) and hotkey-hint slots adopted from crawled
   Doubao/Qianwen layout structures; timed-task entry and tiptap composer
