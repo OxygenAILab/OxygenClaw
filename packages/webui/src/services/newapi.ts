@@ -46,6 +46,15 @@ interface NewApiLogItem {
   is_stream?: boolean;
 }
 
+/** /api/data/self 聚合行（按 模型×天 预聚合，全历史精确值） */
+interface NewApiQuotaDataItem {
+  model_name: string;
+  created_at: number; // 天粒度时间戳
+  count: number;      // 请求数
+  quota: number;      // 消耗
+  token_used?: number;
+}
+
 /** NewAPI quota 计数 → 美元（默认 500000 quota = $1） */
 const QUOTA_PER_USD = 500000;
 
@@ -175,14 +184,17 @@ export const newapiApi = {
         }
       };
 
-      const [selfR, statR, logsR] = await Promise.all([
+      const [selfR, statR, logsR, quotaDataR] = await Promise.all([
         safeGet('/api/user/self'),
         safeGet('/api/log/self/stat'),
         safeGet('/api/log/self?type=2&page_size=300&p=1'),
+        // 预聚合的每日配额（全历史精确值；窗口上限 30 天，取最近 30 天）
+        safeGet(`/api/data/self?start_timestamp=${Math.floor(Date.now() / 1000) - 30 * 86400}&end_timestamp=${Math.floor(Date.now() / 1000)}`),
       ]);
 
-      // 三个端点全部失败 → 视为整体失败，而非返回空数据假装成功
-      if (endpointFailures.length === 3) {
+      // 三个核心端点失败 → 视为整体失败，而非返回空数据假装成功
+      // （quota_data 是增强端点，失败不致命）
+      if (endpointFailures.length >= 3 && !quotaDataR.json?.success) {
         return { success: false, error: `NewAPI 全部端点失败: ${endpointFailures.join('; ')}` };
       }
 
@@ -202,39 +214,30 @@ export const newapiApi = {
         if (!stats.balance) stats.balance = (stat.data.quota || 0) / QUOTA_PER_USD;
       }
 
-      const logs = logsR.json;
-      const items: NewApiLogItem[] = logs?.success ? logs.data?.items || [] : [];
-      if (items.length > 0) {
-        let prompt = 0;
-        let completion = 0;
-        let todayCount = 0;
-        let todayCost = 0;
+      // ── 优先使用预聚合的 quota_data（全历史精确值，按 模型×天）──
+      const qd = quotaDataR.json;
+      const qdItems: NewApiQuotaDataItem[] = qd?.success ? (Array.isArray(qd.data) ? qd.data : qd.data?.items || []) : [];
+      if (qdItems.length > 0) {
+        let totalCost = 0;
+        let totalReq = 0;
         const byModel = new Map<string, { requests: number; cost: number }>();
         const byDay = new Map<string, { requests: number; cost: number }>();
-
-        for (const it of items) {
-          prompt += it.prompt_tokens || 0;
-          completion += it.completion_tokens || 0;
+        for (const it of qdItems) {
           const cost = (it.quota || 0) / QUOTA_PER_USD;
-          if (it.created_at >= today) {
-            todayCount += 1;
-            todayCost += cost;
-          }
+          totalCost += cost;
+          totalReq += it.count || 0;
           const mn = it.model_name || 'unknown';
           const bm = byModel.get(mn) || { requests: 0, cost: 0 };
-          bm.requests += 1;
+          bm.requests += it.count || 0;
           bm.cost += cost;
           byModel.set(mn, bm);
           const day = new Date(it.created_at * 1000).toISOString().slice(0, 10);
           const bd = byDay.get(day) || { requests: 0, cost: 0 };
-          bd.requests += 1;
+          bd.requests += it.count || 0;
           bd.cost += cost;
           byDay.set(day, bd);
         }
-
-        stats.totalTokens = prompt + completion;
-        stats.todayCost = todayCost;
-        stats.todayRequests = todayCount;
+        stats.monthCost = totalCost;
         stats.modelStats = [...byModel.entries()]
           .map(([model, v]) => ({ model, requests: v.requests, cost: v.cost }))
           .sort((a, b) => b.requests - a.requests)
@@ -242,6 +245,59 @@ export const newapiApi = {
         stats.dailyStats = [...byDay.entries()]
           .map(([date, v]) => ({ date, requests: v.requests, cost: v.cost }))
           .sort((a, b) => a.date.localeCompare(b.date));
+        // today 指标也用聚合数据（当日行存在时）
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayRow = stats.dailyStats?.find(d => d.date === todayKey);
+        if (todayRow) {
+          stats.todayCost = todayRow.cost;
+          stats.todayRequests = todayRow.requests;
+        }
+      }
+
+      // ── 日志端点补充 token 数（quota_data 不含 token 拆分）与兜底 ──
+      const logs = logsR.json;
+      const items: NewApiLogItem[] = logs?.success ? logs.data?.items || [] : [];
+      if (items.length > 0) {
+        let prompt = 0;
+        let completion = 0;
+        for (const it of items) {
+          prompt += it.prompt_tokens || 0;
+          completion += it.completion_tokens || 0;
+        }
+        if (!stats.totalTokens) stats.totalTokens = prompt + completion;
+        // 若 quota_data 不可用，退回日志估算（原逻辑）
+        if (qdItems.length === 0) {
+          let todayCount = 0;
+          let todayCost = 0;
+          const byModel = new Map<string, { requests: number; cost: number }>();
+          const byDay = new Map<string, { requests: number; cost: number }>();
+          for (const it of items) {
+            const cost = (it.quota || 0) / QUOTA_PER_USD;
+            if (it.created_at >= today) {
+              todayCount += 1;
+              todayCost += cost;
+            }
+            const mn = it.model_name || 'unknown';
+            const bm = byModel.get(mn) || { requests: 0, cost: 0 };
+            bm.requests += 1;
+            bm.cost += cost;
+            byModel.set(mn, bm);
+            const day = new Date(it.created_at * 1000).toISOString().slice(0, 10);
+            const bd = byDay.get(day) || { requests: 0, cost: 0 };
+            bd.requests += 1;
+            bd.cost += cost;
+            byDay.set(day, bd);
+          }
+          stats.todayCost = todayCost;
+          stats.todayRequests = todayCount;
+          stats.modelStats = [...byModel.entries()]
+            .map(([model, v]) => ({ model, requests: v.requests, cost: v.cost }))
+            .sort((a, b) => b.requests - a.requests)
+            .slice(0, 10);
+          stats.dailyStats = [...byDay.entries()]
+            .map(([date, v]) => ({ date, requests: v.requests, cost: v.cost }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+        }
       }
 
       return { success: true, stats };
