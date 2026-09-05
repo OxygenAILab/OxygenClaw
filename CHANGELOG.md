@@ -15,6 +15,9 @@ Work is developed on `feature/webui-regression`; it will be folded into
 `v26.0-Alpha 2` when the theme completes.
 
 ### Added
+- **CodeX Harness research (item 15)**: `docs/CODEX_HARNESS_RESEARCH.md` —
+  protocol-first kernel, approval policy amendments, thread/turn rollouts,
+  MCP duality as cross-harness bus; five prioritized adoption items.
 - **MCP task node graph (item 12)**: per-task SVG topology
   (Main Agent → Task → Sub Agent) with status colors, flowing connectors
   while processing, and a segmented graph/list toggle — zero dependencies.
